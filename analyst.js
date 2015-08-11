@@ -259,9 +259,10 @@ var routes = {
     sessionID = parsedUrl.query.sessionID;
     
     if (!studentID) {
-      storage.values.forEach(function(studentNode){
+      operational.students.forEach(function(studentID){
+        var studentNode = storage.getItemSync('student_'+studentID);
         processStudentLog(studentNode);
-        storage.setItemSync('student_'+studentNode.studentID, studentNode);
+        storage.setItemSync('student_'+studentID, studentNode);
       });
     } else if (!sessionID) {  // (re)build the log for the student with studentID
       var currentStudentNode = storage.getItemSync('student_'+studentID);
@@ -316,6 +317,12 @@ function processStudentLog(studentNode) {
   Object.keys(studentNode.subjects).forEach(function(subjectKey){
 
     currentSubjectNode = studentNode.subjects[subjectKey];
+    if (currentSubjectNode.progress <= 1) 
+      return;
+    if (!currentSubjectNode.sessions) { // somehow student with no actions came to further progress (e.g, studentID = 257)
+      currentSubjectNode.progress = 1;
+      return;
+    }
     currentSubjectNode.sessions.forEach(function(_sessionNode){
 
       currentSessionNode = _sessionNode;
@@ -326,11 +333,9 @@ function processStudentLog(studentNode) {
         activityEnd = null;
         currentEventTimeStamp = null;
 
-        currentActivityNode.summary = new Object();
-        currentActivityNode.summary.offTask = new Object();
-        currentActivityNode.summary.offTask.instances = [];
-        currentActivityNode.summary.offTask.times = 0;
-        currentActivityNode.summary.offTask.totalduration = 0;
+        currentActivityNode.offTask = new Object();
+        currentActivityNode.offTask.instances = [];
+        currentActivityNode.offTask.totalduration = 0;
         var offTaskIndex = -1;
 
         currentActivityNode.videos = new Object();
@@ -358,16 +363,17 @@ function processStudentLog(studentNode) {
           if (_event.actionType == 'pageActivity') {
             if (_event.action == 'leave_page') {
               offTaskIndex ++;
-              currentActivityNode.summary.offTask.instances[offTaskIndex] = new Object();
-              currentActivityNode.summary.offTask.instances[offTaskIndex].startTime = new Date(_event.time);
-              currentActivityNode.summary.offTask.instances[offTaskIndex].duration = -1;
+              currentActivityNode.offTask.instances[offTaskIndex] = new Object();
+              currentActivityNode.offTask.instances[offTaskIndex].startTime = new Date(_event.time);
+              currentActivityNode.offTask.instances[offTaskIndex].duration = -1;
             } else if (_event.action == 'alt_page') {
-              if (offTaskIndex < 0 || currentActivityNode.summary.offTask.instances[offTaskIndex].duration >= 0) {
+              if (offTaskIndex < 0 || currentActivityNode.offTask.instances[offTaskIndex].duration >= 0) {
                 offTaskIndex ++;
-                currentActivityNode.summary.offTask.instances[offTaskIndex] = new Object();
-                currentActivityNode.summary.offTask.instances[offTaskIndex].startTime = new Date(_event.time - _event.duration);
+                currentActivityNode.offTask.instances[offTaskIndex] = new Object();
+                currentActivityNode.offTask.instances[offTaskIndex].startTime = new Date(_event.time - _event.duration);
               }
-              currentActivityNode.summary.offTask.instances[offTaskIndex].duration = _event.duration;
+              currentActivityNode.offTask.instances[offTaskIndex].duration = _event.duration;
+              currentActivityNode.offTask.totalduration += _event.duration;
             }
             return;
           }
@@ -409,10 +415,30 @@ function processStudentLog(studentNode) {
             } else if (_event.action == 'video_end') {
               if (!currentVideoNode) return;
 
-              currentVideoNode.activeDuration = _event.duration;
+              if (_event.duration < 100)  // the active duration is somehow wrong
+                currentVideoNode.activeDuration = (new Date(_event.time)).getTime() - currentVideoStartTime.getTime();
+              else
+                currentVideoNode.activeDuration = _event.duration;
               currentVideoNode.playedIntervals[currentVideoNode.playedIntervals.length-1].end = videoDuration[_event.target1];
               currentVideoID = '';
             } else if (_event.action == 'video_pause') {
+
+              if (currentVideoID !=  _event.target1) { // new video node, if the video is paused on start
+                currentVideoID = _event.target1;
+                currentVideoPlayTime = Number(_event.target2);
+                currentVideoStartTime = new Date(_event.time);
+                currentVideoNode = new Object();
+                currentVideoNode.activeDuration = 0;
+                currentVideoNode.playedIntervals = [];
+                currentVideoNode.pauses = [];
+
+                currentVideoNode.playedIntervals.push({start:currentVideoPlayTime, end:null});
+
+                if (!currentActivityNode.videos[currentVideoID])
+                  currentActivityNode.videos[currentVideoID] = [];
+                currentActivityNode.videos[currentVideoID].push(currentVideoNode);
+
+              }
 
               var pauseNode = new Object();
               pauseNode.start = new Date(_event.time);
@@ -426,7 +452,7 @@ function processStudentLog(studentNode) {
 
             } else if (_event.action == 'video_stop') {
               if (currentVideoID != '') { // video_end didn't fire
-                currentVideoNode.activeDuration = currentVideoStartTime.getTime() - (new Date(_event.time)).getTime();
+                currentVideoNode.activeDuration = (new Date(_event.time)).getTime() - currentVideoStartTime.getTime();
                 currentVideoNode.playedIntervals[currentVideoNode.playedIntervals.length-1].end = videoDuration[_event.target1];
                 currentVideoID = '';
               }
@@ -444,7 +470,7 @@ function processStudentLog(studentNode) {
 
             // by any change there is no end indicator for video
             if (currentVideoID != '') {
-              currentVideoNode.activeDuration = currentVideoStartTime.getTime - (new Date(_event.time)).getTime();
+              currentVideoNode.activeDuration = (new Date(_event.time)).getTime() - currentVideoStartTime.getTime();
 
               if (currentVideoNode.playedIntervals.length > 0 && currentVideoNode.playedIntervals[currentVideoNode.playedIntervals.length-1].end == null)
                 currentVideoNode.playedIntervals[currentVideoNode.playedIntervals.length-1].end = videoDuration[currentVideoID];
@@ -469,16 +495,179 @@ function processStudentLog(studentNode) {
 
         // further summary for the currentActivityNode
         // video
-        
+        for (var videoID in currentActivityNode.videos) {
+          var videoNode = currentActivityNode.videos[videoID];
+
+          tempPlayedInterval = [];
+          // this videoNode is for the video(sum of multiple play times)
+          videoNode.pauses = [];
+          videoNode.activeDuration = 0;
+
+          for (var i = 0; i<videoNode.length; i++) {
+            var video = videoNode[i];
+            video.consolidatedIntervals = unionPlayedVideoIntervals(video.playedIntervals);
+            video.watchedPercentage = video.consolidatedIntervals.playedLength/videoDuration[videoID];
+            if (video.watchedPercentage > 0.99)
+              video.watchedPercentage = 1;
+            tempPlayedInterval.push.apply(tempPlayedInterval, video.consolidatedIntervals.intervals);
+            videoNode.pauses.push.apply(videoNode.pauses, video.pauses);
+            videoNode.activeDuration += video.activeDuration;
+          }
+          
+          videoNode.watchedIntervals = unionPlayedVideoIntervals(tempPlayedInterval);
+          videoNode.watchedPercentage = videoNode.watchedIntervals.playedLength / videoDuration[videoID];
+          if (videoNode.watchedPercentage > 0.99)
+            videoNode.watchedPercentage = 1;
+        }
 
       });
       // end of activities
 
+      //summarize session node
+      currentSessionNode.start = currentSessionNode.activities[0].start;
+      currentSessionNode.end = currentSessionNode.activities[currentSessionNode.activities.length-1].end;
+      currentSessionNode.duration = currentSessionNode.end.getTime() - currentSessionNode.start.getTime();
+      currentSessionNode.offTask = new Object();
+      currentSessionNode.offTask.instances = [];
+      currentSessionNode.offTask.duration = 0;
+      //currentSessionNode.activities = new Object();
+      currentSessionNode.mcqs = new Object();
+      currentSessionNode.videos = new Object();
+
+      for (var i = 0; i<currentSessionNode.activities.length; i++) {
+        // offTask
+        Array.prototype.push.apply(currentSessionNode.offTask.instances, currentSessionNode.activities[i].offTask.instances);
+        currentSessionNode.offTask.duration += currentSessionNode.activities[i].offTask.totalduration;
+
+        //video
+        for (var videoID in currentSessionNode.activities[i].videos) {
+          if (!currentSessionNode.videos[videoID]) {
+            currentSessionNode.videos[videoID] = new Object();
+            currentSessionNode.videos[videoID].activeDuration = 0;
+            currentSessionNode.videos[videoID].pauseTimes = 0;
+            currentSessionNode.videos[videoID].pauseDuration = 0;
+            currentSessionNode.videos[videoID].watchedIntervals = new Object();
+            currentSessionNode.videos[videoID].watchedIntervals.rawIntervals = [];
+            currentSessionNode.videos[videoID].watchedPercentage = 0;
+          }
+
+          var childVideoNode = currentSessionNode.activities[i].videos[videoID];
+          currentSessionNode.videos[videoID].activeDuration += childVideoNode.activeDuration;
+          currentSessionNode.videos[videoID].pauseTimes += childVideoNode.pauses.length;
+          for (var j = 0; j<childVideoNode.pauses.length; j++) {
+            if (childVideoNode.pauses[j].end) // sometimes there is no end for the pause
+              currentSessionNode.videos[videoID].pauseDuration += childVideoNode.pauses[j].end.getTime() - childVideoNode.pauses[j].start.getTime();
+          }
+          if (childVideoNode.watchedPercentage > 0.99) {
+            currentSessionNode.videos[videoID].watchedPercentage = 1;
+          } else {
+            Array.prototype.push.apply(currentSessionNode.videos[videoID].watchedIntervals.rawIntervals, childVideoNode.watchedIntervals.intervals);
+          }
+
+        }
+
+        // further video summary
+        for (var videoID in currentSessionNode.videos) {
+          if (currentSessionNode.videos[videoID].watchedIntervals.rawIntervals
+            && (currentSessionNode.videos[videoID].watchedPercentage >= 1 
+              || currentSessionNode.videos[videoID].watchedIntervals.rawIntervals.length == 0)) continue;
+          currentSessionNode.videos[videoID].watchedIntervals = unionPlayedVideoIntervals(currentSessionNode.videos[videoID].watchedIntervals.rawIntervals);
+          currentSessionNode.videos[videoID].watchedPercentage = currentSessionNode.videos[videoID].watchedIntervals.playedLength / videoDuration[videoID];
+          if (currentSessionNode.videos[videoID].watchedPercentage > 0.99)
+            currentSessionNode.videos[videoID].watchedPercentage = 1;  
+        }
+
+      }
+
     });
     // end of sessions
 
+    currentSubjectNode.duration = 0;
+    currentSubjectNode.offTask = new Object();
+    currentSubjectNode.offTask.instances = [];
+    currentSubjectNode.offTask.duration = 0;
+    currentSubjectNode.mcqs = new Object();
+    currentSubjectNode.videos = new Object();
+    for (var i_ssn = 0; i_ssn < currentSubjectNode.sessions.length; i_ssn++) {
+      currentSubjectNode.duration += currentSubjectNode.sessions[i_ssn].duration;
+      Array.prototype.push.apply(currentSubjectNode.offTask.instances, currentSubjectNode.sessions[i_ssn].offTask.instances);
+      currentSubjectNode.offTask.duration += currentSubjectNode.sessions[i_ssn].offTask.duration;
+
+      for (var videoID in currentSubjectNode.sessions[i_ssn].videos) {
+        if (!currentSubjectNode.videos[videoID]) {
+          currentSubjectNode.videos[videoID] = new Object();
+          currentSubjectNode.videos[videoID].activeDuration = 0;
+          currentSubjectNode.videos[videoID].pauseTimes = 0;
+          currentSubjectNode.videos[videoID].pauseDuration = 0;
+          currentSubjectNode.videos[videoID].watchedIntervals = new Object();
+          currentSubjectNode.videos[videoID].watchedIntervals.rawIntervals = [];
+          currentSubjectNode.videos[videoID].watchedPercentage = 0;
+        }
+
+        var childVideoNode = currentSubjectNode.sessions[i_ssn].videos[videoID];
+        currentSubjectNode.videos[videoID].activeDuration += childVideoNode.activeDuration;
+        currentSubjectNode.videos[videoID].pauseTimes += childVideoNode.pauseTimes;
+        currentSubjectNode.videos[videoID].pauseDuration += childVideoNode.pauseDuration;
+        if (childVideoNode.watchedPercentage > 0.99) {
+          currentSubjectNode.videos[videoID].watchedPercentage = 1;
+        } else {
+          Array.prototype.push.apply(currentSubjectNode.videos[videoID].watchedIntervals.rawIntervals, childVideoNode.watchedIntervals.intervals);
+        }
+      }
+
+      for (var videoID in currentSubjectNode.videos) {
+        if (currentSubjectNode.videos[videoID].watchedIntervals.rawIntervals
+          && (currentSubjectNode.videos[videoID].watchedPercentage >= 1 
+            || currentSubjectNode.videos[videoID].watchedIntervals.rawIntervals.length < 1))
+          continue;
+        currentSubjectNode.videos[videoID].watchedIntervals = unionPlayedVideoIntervals(currentSubjectNode.videos[videoID].watchedIntervals.rawIntervals);
+        currentSubjectNode.videos[videoID].watchedPercentage = currentSubjectNode.videos[videoID].watchedIntervals.playedLength / videoDuration[videoID];
+        if (currentSubjectNode.videos[videoID].watchedPercentage > 0.99)
+          currentSubjectNode.videos[videoID].watchedPercentage = 1;
+      }
+    }
   });
   // end of subjects
+}
+
+function unionPlayedVideoIntervals(intervals) {
+  if (intervals == undefined)
+    return {'rawIntervals':intervals, 'playedLength':0, 'intervals':[]};
+  var mergedIntervals = intervals;
+  var mergedLength = -1;
+  var key = 0;
+  do {
+    mergedLength = mergedIntervals.length;
+    mergedIntervals = unionIntervals(mergedIntervals, key);
+    key++;
+  } while (mergedIntervals.length != mergedLength && mergedIntervals.length > key);
+
+  var playedLength = 0;
+  for (var i = 0; i<mergedIntervals.length; i++) {
+    playedLength += mergedIntervals[i].end - mergedIntervals[i].start;
+  }
+
+  return {'rawIntervals':intervals, 'playedLength':playedLength, 'intervals':mergedIntervals};
+}
+
+function unionIntervals(intervals, key) {
+  var mergedIntervals = [];
+
+  for (var i = 0; i<=key; i++) {
+    mergedIntervals.push(intervals[i]);
+  }
+
+  for (var i = key+1; i< intervals.length; i++) {
+    // merge mergedIntervals[0] and intervals[i]
+    if (mergedIntervals[key].end < intervals[i].start || mergedIntervals[key].start > intervals.end) { // cannot merge
+      mergedIntervals.push(intervals[i]);
+    } else {
+      mergedIntervals[key].start = mergedIntervals[key].start < intervals[i].start ? mergedIntervals[key].start : intervals[i].start;
+      mergedIntervals[key].end   = mergedIntervals[key].end   > intervals[i].end   ? mergedIntervals[key].end   : intervals[i].end  ;     
+    }
+  }
+
+  return mergedIntervals;
 }
 
 // function getVideoDuration(id) {

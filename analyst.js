@@ -332,10 +332,33 @@ var routes = {
   // "/api/questions": function(parsedUrl) {
   //   return {unixtime: (new Date(parsedUrl.query.iso)).getTime()};
   // },
-  // // retrive student node
-  // "/api/retrieve": function() {
-  //   return {};
-  // },
+  // retrive student node
+  "/api/retrieve": function(parsedUrl) {
+    var studentID = parsedUrl.query.studentID;
+    var studentNode;
+
+    if(studentID) {
+      studentNode = getItemSync('student_'+studentID);
+      if (studentNode) {
+        sendResponse(JSON.stringify(studentNode));
+      } else {
+        sendResponse("no student with id: "+studentID);
+      }
+    } else {
+      var students = [];
+      for(var i = 0; i< operational.students.length; i++) {
+        studentNode.getItemSync('students_'+operational.students[i]);
+        if (!studentNode) {
+          sendResponse("there are something wrong, the operational is un-synced!");
+          return;
+        }
+        students.push(studentNode);
+      }
+      sendResponse(JSON.stringify(students));
+    }
+
+    return {};
+  },
   "/api/clear": function() {
     storage.clearSync();
     sendResponse('done!');
@@ -1164,7 +1187,7 @@ var server = http.createServer(function(request, response) {
   _response = response;
   var parsedUrl = url.parse(request.url, true);
   var index;
-  if (parsedUrl.pathname.indexOf("//") == 0) {
+  if (parsedUrl.pathname.indexOf("//") === 0) {
     index = parsedUrl.pathname.substr(1);
   } else {
     index = parsedUrl.pathname;

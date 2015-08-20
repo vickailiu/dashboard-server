@@ -1163,7 +1163,14 @@ var _response = null;
 var server = http.createServer(function(request, response) {
   _response = response;
   var parsedUrl = url.parse(request.url, true);
-  var resource = routes[parsedUrl.pathname];
+  var index;
+  if (parsedUrl.pathname.indexOf("//") == 0) {
+    index = parsedUrl.pathname.substr(1);
+  } else {
+    index = parsedUrl.pathname;
+  }
+
+  var resource = routes[index];
   if (resource) {
     resource(parsedUrl);
     // response.writeHead(200, {"Content-Type": "application/json"});
@@ -1174,5 +1181,7 @@ var server = http.createServer(function(request, response) {
     _response.end();
   }
 });
-server.listen(1337,'127.0.0.1');
+// server.listen(1337,'127.0.0.1');
+// production
+server.listen(8000,'127.0.0.1');
 console.log('running');

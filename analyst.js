@@ -31,6 +31,8 @@ palmviewActivityMapper[27] = 9;
 var activityMapper = {};
 activityMapper[2] = palmviewActivityMapper;
 
+var node_to_exclude = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 131, 132];
+
 var routes = {
   // calculate the values across questions
   "/api/initialize": function() {
@@ -114,6 +116,10 @@ var routes = {
           //studentNode = {};
           //storage.setItemSync('student_'+row.studentID, studentNode);
         //}
+        if (node_to_exclude.indexOf(row.studentID) > -1) {
+          return;
+        }
+
         var studentNode = {};
 
         var exclude = ['subjID', 'subjName', 'progress'];
@@ -187,8 +193,6 @@ var routes = {
       var currentStudentNode;
       var currentSessionNode;
       var currentActivityNode;
-
-      var node_to_exclude = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 131, 132];
 
       rows.forEach(function(row){
         if (node_to_exclude.indexOf(row.studentID) > -1) {
@@ -335,6 +339,7 @@ var routes = {
   // retrive student node
   "/api/retrieve": function(parsedUrl) {
     var studentID = parsedUrl.query.studentID;
+    var schoolID = parsedUrl.query.schoolID;
     var studentNode;
 
     if(studentID) {
@@ -344,13 +349,22 @@ var routes = {
       } else {
         sendResponse("no student with id: "+studentID);
       }
+    } else if(schoolID){
+      var students = [];
+      for(var i = 0; i< operational.students.length; i++) {
+        studentNode = storage.getItemSync('student_'+operational.students[i]);
+        if (!studentNode || studentNode.schoolID != schoolID) {
+          continue;
+        }
+        students.push(studentNode);
+      }
+      sendResponse(JSON.stringify(students));
     } else {
       var students = [];
       for(var i = 0; i< operational.students.length; i++) {
-        studentNode = storage.getItemSync('students_'+operational.students[i]);
+        studentNode = storage.getItemSync('student_'+operational.students[i]);
         if (!studentNode) {
-          sendResponse("there are something wrong, the operational is un-synced!");
-          return;
+          continue;
         }
         students.push(studentNode);
       }
@@ -1204,7 +1218,7 @@ var server = http.createServer(function(request, response) {
     _response.end();
   }
 });
-// server.listen(1337,'127.0.0.1');
+//server.listen(1337,'127.0.0.1');
 // production
 server.listen(8000,'127.0.0.1');
 console.log('running');

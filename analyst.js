@@ -338,7 +338,7 @@ var routes = {
     var studentNode;
 
     if(studentID) {
-      studentNode = getItemSync('student_'+studentID);
+      studentNode = storage.getItemSync('student_'+studentID);
       if (studentNode) {
         sendResponse(JSON.stringify(studentNode));
       } else {
@@ -347,7 +347,7 @@ var routes = {
     } else {
       var students = [];
       for(var i = 0; i< operational.students.length; i++) {
-        studentNode.getItemSync('students_'+operational.students[i]);
+        studentNode = storage.getItemSync('students_'+operational.students[i]);
         if (!studentNode) {
           sendResponse("there are something wrong, the operational is un-synced!");
           return;

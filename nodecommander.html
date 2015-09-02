@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Hi there</title>
+    <script type="text/javascript">
+        function get(url){
+            var time_profiler = new Date();
+                document.getElementById("view").innerHTML = "loading...";
+
+            if (window.XMLHttpRequest) {
+                // code for IE7+, Firefox, Chrome, Opera, Safari
+                xmlhttp = new XMLHttpRequest();
+            } else {
+                // code for IE6, IE5
+                xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
+            }
+            xmlhttp.onreadystatechange = function() {
+                if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+                    document.getElementById("view").innerHTML = xmlhttp.responseText;// + "<br>done! Time spent: " + ( (new Date()).getTime() - time_profiler.getTime() );
+                }
+            }
+            xmlhttp.open("GET", url, true);
+            xmlhttp.send();
+        }
+    </script>
+</head>
+
+<body>
+    <button onclick="get('http://localhost:1337/api/clear')">clear</button>
+    <button onclick="get('http://localhost:1337/api/initialize')">initialize</button>
+    <button onclick="get('http://localhost:1337/api/parsequestion')">parsequestion</button>
+    <button onclick="get('http://localhost:1337/api/createnode')">createnode</button>
+    <button onclick="get('http://localhost:1337/api/parselog')">parselog</button>
+    <button onclick="get('http://localhost:1337/api/processlog')">processlog</button>
+    <!-- <button onclick="get()">clear</button> -->
+    <div id="view">result...</div>
+</body>
+
+</html>

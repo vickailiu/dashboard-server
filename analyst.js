@@ -2582,7 +2582,7 @@ function sendResponse(res) {
   if (_response === null) {
     console.error('response is null');
   }
-
+  _response.setHeader('Access-Control-Allow-Origin', '*');
   _response.writeHead(200, {"Content-Type": "application/json"});
   if ( (typeof res) == 'string')
     _response.end(res);

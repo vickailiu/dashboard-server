@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Hi there</title>
+    <script type="text/javascript">
+        var summaryTable;
+        function getData(){
+            var time_profiler = new Date();
+                document.getElementById("view").innerHTML = "loading...";
+
+            if (window.XMLHttpRequest) {
+                // code for IE7+, Firefox, Chrome, Opera, Safari
+                xmlhttp = new XMLHttpRequest();
+            } else {
+                // code for IE6, IE5
+                xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
+            }
+            xmlhttp.onreadystatechange = function() {
+                if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+                    summaryTable = JSON.parse(xmlhttp.responseText);
+                    document.getElementById("view").innerHTML = 'done';// + "<br>done! Time spent: " + ( (new Date()).getTime() - time_profiler.getTime() );
+                }
+            }
+            xmlhttp.open("GET", 'http://localhost:1337/api/getTable', true);
+            xmlhttp.send();
+        }
+    </script>
+</head>
+
+<body>
+    <button onclick="getData()">get</button>
+    <div id="view">result...</div>
+</body>
+
+</html>

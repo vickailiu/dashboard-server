@@ -17,9 +17,21 @@ var connection = mysql.createConnection({
 
 var operational;
 var questions;
+var summaryTabel;
+var property;
 
 // mapping phaseID to phaseTry in the DB
 var palmviewActivityMapper = {};
+palmviewActivityMapper[1]  = 1; 
+palmviewActivityMapper[2]  = 2;
+palmviewActivityMapper[3]  = 3;
+palmviewActivityMapper[4]  = 4;
+palmviewActivityMapper[5]  = 5;
+palmviewActivityMapper[9]  = 6;
+palmviewActivityMapper[10] = 7;
+palmviewActivityMapper[11] = 8;
+palmviewActivityMapper[12] = 9;
+palmviewActivityMapper[13] = 10; 
 palmviewActivityMapper[16] = 1;
 palmviewActivityMapper[17] = 2;
 palmviewActivityMapper[18] = 3;
@@ -32,9 +44,12 @@ palmviewActivityMapper[27] = 9;
 var activityMapper = {};
 activityMapper[2] = palmviewActivityMapper;
 
-var node_to_exclude = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 131, 132];
+var node_to_exclude = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 131, 132, 372];
 
 var routes = {
+  "/api/debug": function() {
+    sendResponse('bye');
+  },
   // calculate the values across questions
   "/api/initialize": function() {
     operational = storage.getItemSync('operational');
@@ -151,6 +166,8 @@ var routes = {
         storage.setItemSync('student_'+row.studentID, studentNode);
       });
 
+      operational.students.sort();
+
       storage.setItemSync('operational', operational);
 
       console.log('parsing complete, time spent: '+ ((new Date()).getTime() - time_profiler.getTime()) );
@@ -169,7 +186,7 @@ var routes = {
     
     if (!studentID) { // rebuild the log for all the students !!!! set to process palmview's data first
       connection.query( 'SELECT LOG.time, LOG.duration, LOG.actionType, LOG.action, LOG.target1, LOG.target2, LOG.phaseID, LOG.correct, LOG.studentID, LOG.sessionID FROM LOG INNER JOIN STUDENT ON  `LOG`.studentID =  `STUDENT`.studentID AND  '+
-        '`STUDENT`.schoolID = 2 ORDER BY  `LOG`.studentID,  `LOG`.`logID`',
+        '`STUDENT`.schoolID = 2 AND LOG.time > "2015-05-04" ORDER BY  `LOG`.studentID,  `LOG`.`logID`',
         log_query_handler);
     } else if (!sessionID) {  // (re)build the log for the student with studentID
       connection.query('SELECT time, duration, actionType, action, target1, target2, phaseID, correct, studentID, sessionID FROM `LOG` WHERE studentID = '+studentID+' ORDER BY `logID`',
@@ -255,7 +272,10 @@ var routes = {
         eventNode.action = row.action;
         eventNode.target1 = row.target1;
         eventNode.target2 = row.target2;
-        eventNode.correct = !row.correct; // bit operation, if row.correct = [0], then !row.correct = false
+        if (row.correct === null)
+          eventNode.correct = null;
+        else
+          eventNode.correct = !!row.correct; // bit operation
 
         currentActivityNode.events.push(eventNode);
       });
@@ -333,6 +353,941 @@ var routes = {
       sendResponse('done!');
     }
   },
+  "/api/summarizequestion": function(parsedUrl) {
+    summaryTabel = {};
+    property = {};
+    connection.query('SELECT * FROM  `SUBJECT` ORDER BY  `SUBJECT`.`subjID` ASC',
+      subject_query_handler);
+    function subject_query_handler(err, rows) {
+      if (err) {
+        console.error('error connecting: ' + err.stack);
+        return;
+      }
+
+      if (!rows || rows.length < 1) {
+        console.log('no subjects');
+        return;
+      }
+
+      rows.forEach(function(subject){
+        var subjectNode = {};
+        subjectNode.id = subject.subjID;
+        subjectNode.name = subject.subjName;
+
+        property['subject_'+subjectNode.id] = subjectNode;
+        summaryTabel['subject_'+subjectNode.id] = {};
+      });
+
+      connection.query('SELECT * FROM  `PHASE_TRY` ORDER BY  `PHASE_TRY`.`phaseId` ASC ', 
+        activity_query_handler);
+    }
+
+    function activity_query_handler(err, rows) {
+      if (err) {
+        console.error('error connecting: ' + err.stack);
+        return;
+      }
+
+      if (!rows || rows.length < 1) {
+        console.log('no subjects');
+        return;
+      }
+
+      rows.forEach(function(activity){
+        var activityNode = {};
+        activityNode.id = palmviewActivityMapper[activity.phaseId];
+        activityNode.name = activity.label;
+        activityNode.title = activity.title;
+        activityNode.subjID = activity.subjId;
+        activityNode.type = activity.contentType;
+        activityNode.para1 = activity.para1;
+        activityNode.para2 = activity.para2;
+        activityNode.para3 = activity.para3;
+
+        property['activity_'+activityNode.id] = activityNode;
+        summaryTabel['activity_'+activityNode.id] = {};
+      });
+
+      rows.forEach(function(activity){
+        var id = palmviewActivityMapper[activity.phaseId];
+        
+        summaryTabel['activity_'+ id + '_video_68ihQ9jQOM8'] = {};
+        summaryTabel['activity_'+ id + '_video_Jowey_prtVM'] = {};
+        summaryTabel['activity_'+ id + '_video_pjjSp46ffjQ'] = {};
+        summaryTabel['activity_'+ id + '_video_bwm5pv3UiYE'] = {};
+        summaryTabel['activity_'+ id + '_video_LlFw4UPv4L4'] = {};
+        summaryTabel['activity_'+ id + '_video_Jx9mtdx-7aQ'] = {};
+        summaryTabel['activity_'+ id + '_video_jcc0WBVtO90'] = {};
+        summaryTabel['activity_'+ id + '_video_0lf0YACerzY'] = {};
+        summaryTabel['activity_'+ id + '_video_bDXedeH-Bpo'] = {};
+        summaryTabel['activity_'+ id + '_video_zJUaLHvLP6s'] = {};
+
+        for (var questionID in questions) {
+          summaryTabel['activity_'+ id + '_question_' + questionID] = {};
+        }
+      });
+
+      object_initialization();
+    }
+
+    function object_initialization() {
+
+      for (var fieldAttr in summaryTabel) {
+        summaryTabel[fieldAttr]['school_2'] = {};
+        summaryTabel[fieldAttr]['class_5'] = {};
+        summaryTabel[fieldAttr]['class_6'] = {};
+        summaryTabel[fieldAttr]['class_7'] = {};
+        summaryTabel[fieldAttr]['class_8'] = {};
+        summaryTabel[fieldAttr]['class_9'] = {};
+        summaryTabel[fieldAttr]['class_10'] = {};
+        summaryTabel[fieldAttr]['class_11'] = {};
+        summaryTabel[fieldAttr]['class_12'] = {};
+        summaryTabel[fieldAttr]['class_13'] = {};
+        summaryTabel[fieldAttr]['class_14'] = {};
+
+        for(var i = 0; i< operational.students.length; i++) {
+          summaryTabel[fieldAttr]['student_' + operational.students[i]] = {};
+        }
+      }
+
+      summarize_question_view();
+    }
+
+    function summarize_question_view() {
+      for(var i = 0; i< operational.students.length; i++) {
+        // if (operational.students[i] != 138) continue; //--- used for debugging purpose
+        var studentNode = storage.getItemSync('student_' + operational.students[i]);
+        if (!studentNode) throw "summarize: cannot find the student";
+
+        property['student_' + operational.students[i]] = {};
+
+        // copy student property to propertylist
+        for (var attr in studentNode) {
+          if (attr != 'subjects') {
+            property['student_' + operational.students[i]][attr] = studentNode[attr];
+          }
+        }
+
+        for (var subjectID in studentNode.subjects) {
+          var subjectNode = studentNode.subjects[subjectID];
+          property['subject_'+subjectID].name = subjectNode.name;
+
+          for (var i_session = 0; subjectNode.sessions && i_session < subjectNode.sessions.length; i_session++) {
+            var sessionNode = subjectNode.sessions[i_session];
+
+            for (var i_activity = 0; i_activity < sessionNode.activities.length; i_activity++) {
+              var activityNode = sessionNode.activities[i_activity];
+              if (activityNode.activityID - 1 === 0) continue;
+
+              for (var i_q = 0; activityNode.questions && i_q < activityNode.questions.length; i_q++) {
+                var questionNode = activityNode.questions[i_q];
+
+                if (summaryTabel['activity_'+activityNode.activityID+'_question_'+questionNode.id]) {
+                  if (!summaryTabel['activity_'+activityNode.activityID+'_question_'+questionNode.id]['student_'+studentNode.studentID][sessionNode.sessionID]) {
+                    summaryTabel['activity_'+activityNode.activityID+'_question_'+questionNode.id]['student_'+studentNode.studentID][sessionNode.sessionID] = [];  
+                  }
+                  summaryTabel['activity_'+activityNode.activityID+'_question_'+questionNode.id]['student_'+studentNode.studentID][sessionNode.sessionID].push(questionNode);
+
+                //   var bla = '';
+                //   for (var j = 0; j<questionNode.sequence.length; j++) {
+                //     bla += questionNode.sequence[j].label + ' ';
+                //   }
+                //   console.log(bla);
+                // }
+                // else {
+                //   var bla = '';
+                //   for (var j = 0; questionNode.sequence && j<questionNode.sequence.length; j++) {
+                //     bla += questionNode.sequence[j].label + ' ';
+                //   }
+                //   console.log('----------------'+bla);
+                }
+              }
+
+              //questions per session
+              for (var rowLabel in summaryTabel) {
+                if (rowLabel.indexOf('activity_'+activityNode.activityID+'_question_') < 0) continue;
+
+                cell = summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID];
+                if (!cell) continue;
+
+                var questionSummaryNode = {};
+                questionSummaryNode.number = 0;
+                questionSummaryNode.duration = 0;
+                questionSummaryNode.correctTimes = 0;
+                questionSummaryNode.highlightedWords = 0;
+                questionSummaryNode.workout_planType = {};
+                questionSummaryNode.workout_planType.times = 0;
+                questionSummaryNode.workout_planType.correct = 0;
+                questionSummaryNode.workout_planType.submitTimes = 0;
+                questionSummaryNode.workout_planType.correctSubmitTimes = 0;
+                questionSummaryNode.workout_planModel = {};
+                questionSummaryNode.workout_planModel.times = 0;
+                questionSummaryNode.workout_planModel.correct = 0;
+                questionSummaryNode.workout_planModel.submitTimes = 0;
+                questionSummaryNode.workout_planModel.correctSubmitTimes = 0;
+                questionSummaryNode.workout_dragDrops = {};
+                questionSummaryNode.workout_dragDrops.incomplete_attempts = 0;
+                questionSummaryNode.workout_dragDrops.complete_attempts = 0;
+                questionSummaryNode.workout_dragDrops.correct_attampts = 0;
+                questionSummaryNode.workout_equation = {};
+                questionSummaryNode.workout_equation.times = 0;
+                questionSummaryNode.workout_equation.correct = 0;
+                questionSummaryNode.answer = {};
+                questionSummaryNode.answer.times = 0;
+                questionSummaryNode.answer.correct = 0;
+                questionSummaryNode.answer.submitTimes = 0;
+                questionSummaryNode.answer.correctSubmitTimes = 0;
+                questionSummaryNode.wrong_answer_reaction = {};
+                questionSummaryNode.wrong_answer_reaction.ignore = 0;
+                questionSummaryNode.wrong_answer_reaction.review = 0;
+                questionSummaryNode.wrong_answer_reaction.hint = 0;
+
+                for (var i_ques = 0; cell && i_ques< cell.length; i_ques ++) {
+                  var questionNode = cell[i_ques];
+
+                  questionSummaryNode.number ++;
+                  questionSummaryNode.duration += questionNode.duration;
+
+                  if (questionNode.highlightedWords) {
+                    for (var i_highlight = 0; i_highlight<questionNode.highlightedWords.length; i_highlight++) {
+                      if (questionNode.highlightedWords[i_highlight].highlight) {
+                        questionSummaryNode.highlightedWords ++;    
+                      }
+                    }
+                  }
+
+                  if (questionNode.workout_planType) {
+                    questionSummaryNode.workout_planType.times += questionNode.workout_planType.times;
+                    questionSummaryNode.workout_planType.correct += questionNode.workout_planType.correctTimes;
+                    if (questionNode.workout_planType.final) {
+                      questionSummaryNode.workout_planType.submitTimes++;
+                      //console.log('_' + questionNode.workout_planType.final +' vs '+ questionData.type.substr(6,1).toLowerCase());
+                      if (questionNode.workout_planType.final == questions[questionNode.id].type.substr(6,1).toLowerCase()) {
+                        questionSummaryNode.workout_planType.correctSubmitTimes ++;
+                      }
+                    }
+                  }
+                  
+                  if (questionNode.workout_planModel) {
+                    questionSummaryNode.workout_planModel.times += questionNode.workout_planModel.times;
+                    questionSummaryNode.workout_planModel.correct += questionNode.workout_planModel.correctTimes;
+                    if (questionNode.workout_planModel.final) {
+                      questionSummaryNode.workout_planModel.submitTimes++;
+                      //console.log('_' + questionNode.workout_planModel.final.toLowerCase() +' vs '+ questionData.type.substr(6).toLowerCase());
+                      if (questionNode.workout_planModel.final.toLowerCase() == questions[questionNode.id].type.substr(6).toLowerCase()) {
+                        questionSummaryNode.workout_planModel.correctSubmitTimes ++;
+                      }
+                    }
+                  }
+
+                  if (questionNode.workout_dragDrops && questionNode.workout_dragDrops.fields) {
+                    for (var i_ddf = 0; i_ddf<questionNode.workout_dragDrops.fields.length; i_ddf++) {
+                      questionSummaryNode.workout_dragDrops.incomplete_attempts += questionNode.workout_dragDrops.fields[i_ddf].incomplete_attempts;
+                      questionSummaryNode.workout_dragDrops.complete_attempts += questionNode.workout_dragDrops.fields[i_ddf].attempts.times;
+                      questionSummaryNode.workout_dragDrops.correct_attampts += questionNode.workout_dragDrops.fields[i_ddf].attempts.correctTimes;
+                    }
+                  }
+
+                  if (questionNode.workout_equation) {
+                    for (var i_eq = 0; i_eq<questionNode.workout_equation.length; i_eq++) {
+                      questionSummaryNode.workout_equation.times += questionNode.workout_equation[i_eq].times;
+                      questionSummaryNode.workout_equation.correct += questionNode.workout_equation[i_eq].correctTimes;
+                    }
+                  }
+
+                  if (questionNode.answer) {
+                    questionSummaryNode.answer.times += questionNode.answer.times;
+                    questionSummaryNode.answer.correct += questionNode.answer.correctTimes;
+                    if (questionNode.answer.final !== null) {
+                      questionSummaryNode.answer.submitTimes++;
+                      if (questionNode.answer.final) {
+                        questionSummaryNode.answer.correctSubmitTimes ++;
+                      }
+                    }
+                  }
+
+                  if (questionNode.wrong_answer_reaction) {
+                    questionSummaryNode.wrong_answer_reaction.ignore += questionNode.wrong_answer_reaction.ignore;
+                    questionSummaryNode.wrong_answer_reaction.review += questionNode.wrong_answer_reaction.review;
+                    questionSummaryNode.wrong_answer_reaction.hint += questionNode.wrong_answer_reaction.hint;
+                  }
+                }
+
+                for(var mainattr in questionSummaryNode) {
+                  if (mainattr == 'number') continue;
+                  if (typeof questionSummaryNode[mainattr] == 'object') {
+                    for(var subattr in questionSummaryNode[mainattr]) {
+                      questionSummaryNode[mainattr][subattr] = 1.0 * questionSummaryNode[mainattr][subattr] / questionSummaryNode.number;
+                    }
+                  } else {
+                    questionSummaryNode[mainattr] = 1.0 * questionSummaryNode[mainattr] / questionSummaryNode.number;
+                  }
+                }
+
+                summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].summary = questionSummaryNode;
+              }
+
+              for (var videoID in activityNode.videos) {
+                summaryTabel['activity_'+activityNode.activityID+'_video_'+videoID]['student_'+studentNode.studentID][sessionNode.sessionID] = activityNode.videos[videoID];
+
+                var videoSummaryNode = {};
+                videoSummaryNode.number = 0;
+                var tempActiveDuration = 0;
+                var tempPauseTimes = 0;
+                var tempPauseDuration = 0;
+                var tempPercentage = 0;
+
+                for(var i_v = 0; i_v < activityNode.videos[videoID].length; i_v++) {
+                  var videoNode = activityNode.videos[videoID][i_v];
+                  videoSummaryNode.number ++;
+                  tempActiveDuration += videoNode.activeDuration;
+                  tempPauseTimes      += videoNode.pauses? videoNode.pauses.length : 0;
+                  for (var i_video = 0; videoNode.pauses && i_video<videoNode.pauses.length; i_video++) {
+                    if (videoNode.pauses[i_video].end) {
+                      tempPauseDuration += (new Date(videoNode.pauses[i_video].end)).getTime() - (new Date(videoNode.pauses[i_video].start)).getTime();
+                    }
+                  }
+                  tempPercentage += videoNode.watchedPercentage;
+                }
+                videoSummaryNode.activeDuration = 1.0 * tempActiveDuration / videoSummaryNode.number;
+                videoSummaryNode.pauseTimes = 1.0 * tempPauseTimes / videoSummaryNode.number;
+                videoSummaryNode.pauseDuration = 1.0 * tempPauseDuration / videoSummaryNode.number;
+                videoSummaryNode.watchedPercentage = 1.0 * tempPercentage / videoSummaryNode.number;
+
+                summaryTabel['activity_'+activityNode.activityID+'_video_'+videoID]['student_'+studentNode.studentID][sessionNode.sessionID].summary = videoSummaryNode;
+              }
+
+              if (!summaryTabel['activity_'+activityNode.activityID]['student_'+studentNode.studentID][sessionNode.sessionID]) {
+                summaryTabel['activity_'+activityNode.activityID]['student_'+studentNode.studentID][sessionNode.sessionID] = [];
+              }
+
+              var activitySummaryNode = {};
+
+              activitySummaryNode.completedActivities = activityNode.completed ? 1 : 0;
+              activitySummaryNode.attemptedActivities = 1;
+              activitySummaryNode.reinforcementAttempts = activityNode.reinforcementTimes;
+
+              //activitySummaryNode.questionSummary = activityNode.questionSummary;
+              activitySummaryNode.question = {};
+              for (var mainattr in activityNode.questionSummary) {
+                if (mainattr == 'questionNumber') {
+                  activitySummaryNode.question.number = activityNode.questionSummary.questionNumber;
+                  if (activitySummaryNode.question.number === 0) break;
+                  continue;
+                }
+                var entry = activityNode.questionSummary[mainattr];
+                if (entry === null) {
+                  activitySummaryNode.question[mainattr] = 0;
+                } else if (typeof entry == 'object') {
+                  activitySummaryNode.question[mainattr] = {};
+                  for (var subattr in entry) {
+                    activitySummaryNode.question[mainattr][subattr] = 1.0 * entry[subattr] / activityNode.questionSummary.questionNumber;
+                  }
+                } else {
+                  activitySummaryNode.question[mainattr] = 1.0 * entry / activityNode.questionSummary.questionNumber;
+                }
+              }
+
+              activitySummaryNode.offTask = {};
+              if (activityNode.offTask) {
+                if (activityNode.offTask.instances && activityNode.offTask.instances.length > 0) {
+                  activitySummaryNode.offTask.number = activityNode.offTask.instances.length;
+                  activitySummaryNode.offTask.duration = 1.0 * activityNode.offTask.totalduration / activityNode.offTask.instances.length;
+                } else {
+                  if (activityNode.offTask.totalduration > 0) {
+                    activitySummaryNode.offTask.number = 1;
+                    activitySummaryNode.offTask.duration = activityNode.offTask.totalduration;
+                  } else {
+                    activitySummaryNode.offTask.number = 0;
+                    activitySummaryNode.offTask.duration = 0;
+                  }
+                }
+              }
+              
+              activitySummaryNode.video = {};
+              activitySummaryNode.video.number = 0;
+              activitySummaryNode.video.activeDuration = 0;
+              activitySummaryNode.video.pauseTimes = 0;
+              activitySummaryNode.video.pauseDuration = 0; 
+              activitySummaryNode.video.watchedPercentage = 0;
+              for (var videoID in activityNode.videos) {
+                var videoNode = activityNode.videos[videoID].summary;
+                activitySummaryNode.video.number += videoNode.number;
+                activitySummaryNode.video.activeDuration += videoNode.activeDuration * videoNode.number;
+                activitySummaryNode.video.pauseTimes += videoNode.pauseTimes * videoNode.number;
+                activitySummaryNode.video.pauseDuration += videoNode.pauseDuration * videoNode.number;
+                activitySummaryNode.video.watchedPercentage += videoNode.watchedPercentage * videoNode.number;
+              }
+              if (activitySummaryNode.video.number > 0) {
+                activitySummaryNode.video.activeDuration = 1.0 * activitySummaryNode.video.activeDuratio / activitySummaryNode.video.number;
+                activitySummaryNode.video.pauseTimes = 1.0 * activitySummaryNode.video.pauseTimes / activitySummaryNode.video.number;
+                activitySummaryNode.video.pauseDuration = 1.0 * activitySummaryNode.video.pauseDuration / activitySummaryNode.video.number;
+                activitySummaryNode.video.watchedPercentage = 1.0 * activitySummaryNode.video.watchedPercentage / activitySummaryNode.video.number;
+              }
+              if (!activitySummaryNode.video.activeDuration) activitySummaryNode.video.activeDuration = 0;
+              if (!activitySummaryNode.video.pauseTimes) activitySummaryNode.video.pauseTimes = 0;
+              if (!activitySummaryNode.video.pauseDuration) activitySummaryNode.video.pauseDuration = 0;
+              if (!activitySummaryNode.video.watchedPercentage) activitySummaryNode.video.watchedPercentage = 0;
+
+              summaryTabel['activity_'+activityNode.activityID]['student_'+studentNode.studentID][sessionNode.sessionID].push(activitySummaryNode);
+            }
+            
+            // summarize individual activity for each session
+            for (var rowLabel in summaryTabel) {
+              if (rowLabel.indexOf('activity_') !== 0 || 
+                rowLabel.indexOf('_question_') > 0 ||
+                rowLabel.indexOf('_video_') > 0)
+                continue;
+              if (!summaryTabel[rowLabel] || !summaryTabel[rowLabel]['student_'+studentNode.studentID] || !summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID])
+                continue;
+
+              var count = summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].length;
+              if (count === 0) {
+                continue;
+              } else if (count == 1) {
+                summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].summary = summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID][0];
+              } else {
+                var activitySummary = {};
+                var mainattrCount = {};
+                for(var i_act = 0; i_act < count; i_act++) {
+                  var actNode = summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID][i_act];
+                  
+                  for(var mainattr in actNode) {
+                    if (actNode[mainattr] === null) {
+                      continue;
+                    } else if (typeof actNode[mainattr] == 'object') {
+                      if (!mainattrCount[mainattr]) {
+                        mainattrCount[mainattr] = actNode[mainattr].number;
+                      } else {
+                        mainattrCount[mainattr] += actNode[mainattr].number;
+                      }
+                      if (!activitySummary[mainattr]) {
+                        activitySummary[mainattr] = {};
+                      }
+
+                      for(var subattr in actNode[mainattr]) {
+                        if (subattr == 'number') continue;
+                        if (actNode[mainattr][subattr] === null) continue;
+                        if (typeof actNode[mainattr][subattr] == 'object') {
+                          if (!activitySummary[mainattr][subattr]) {
+                            activitySummary[mainattr][subattr] = {};
+                          }
+                          for (var leafattr in actNode[mainattr][subattr]) {
+                            if (!activitySummary[mainattr][subattr][leafattr]) {
+                              activitySummary[mainattr][subattr][leafattr] = actNode[mainattr][subattr][leafattr] * actNode[mainattr].number;
+                            } else {
+                              activitySummary[mainattr][subattr][leafattr] += actNode[mainattr][subattr][leafattr] * actNode[mainattr].number;
+                            }
+                          }
+                        } else {
+                          if (!activitySummary[mainattr][subattr]) {
+                            activitySummary[mainattr][subattr] = actNode[mainattr][subattr] * actNode[mainattr].number;
+                          } else {
+                            activitySummary[mainattr][subattr] += actNode[mainattr][subattr] * actNode[mainattr].number;
+                          }
+                        }
+                      }
+
+                    } else {
+                      if (!activitySummary[mainattr]) {
+                        activitySummary[mainattr] = actNode[mainattr];
+                      } else {
+                        activitySummary[mainattr] += actNode[mainattr];
+                      }
+                    }
+                  }
+                }
+
+                for (var mainattr in activitySummary) {
+                  if (activitySummary[mainattr] === null) continue;
+                  if (typeof activitySummary[mainattr] == 'object') {
+                    for (var subattr in activitySummary[mainattr]) {
+                      if (activitySummary[mainattr][subattr] === null) continue;
+                      if (typeof activitySummary[mainattr][subattr] == 'object') {
+                        for (var leafattr in activitySummary[mainattr][subattr]) {
+                          activitySummary[mainattr][subattr][leafattr] = 1.0 * activitySummary[mainattr][subattr][leafattr] / mainattrCount[mainattr];
+                        }
+                      } else {
+                        activitySummary[mainattr][subattr] = 1.0 * activitySummary[mainattr][subattr] / mainattrCount[mainattr];
+                      }
+                    }
+
+                    activitySummary[mainattr].number = mainattrCount[mainattr];
+                  }
+                }
+                activitySummary.number = count;
+
+                summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].summary = activitySummary;
+              }
+            }
+
+            // summarize subject for each session (from the activities)
+            var subject_session_summaryNode = {};
+            var mainattrCount = {};
+            for (var rowLabel in summaryTabel) {
+              if (rowLabel.indexOf('activity_') !== 0 || 
+                rowLabel.indexOf('_question_') > 0 ||
+                rowLabel.indexOf('_video_') > 0)
+                continue;
+
+              if (!summaryTabel[rowLabel] || ! summaryTabel[rowLabel]['student_'+studentNode.studentID] || !summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID])
+                continue;
+
+              var actSummary = summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].summary;
+              if (!actSummary) continue;
+
+              for(var mainattr in actSummary) {
+                if (actSummary[mainattr] === null) continue;
+                if (typeof actSummary[mainattr] == 'object') {
+                  if (!mainattrCount[mainattr]) {
+                    mainattrCount[mainattr] = actSummary[mainattr].number;
+                  } else {
+                    mainattrCount[mainattr] += actSummary[mainattr].number;
+                  }
+
+                  if (!subject_session_summaryNode[mainattr]) {
+                    subject_session_summaryNode[mainattr] = {};
+                  }
+
+                  for (var subattr in actSummary[mainattr]) {
+                    if (subattr == 'number') continue;
+                    if (actSummary[mainattr][subattr] === null) continue; 
+                    if (typeof actSummary[mainattr][subattr] == 'object') {
+                      if (!subject_session_summaryNode[mainattr][subattr]) {
+                        subject_session_summaryNode[mainattr][subattr] = {};
+                      }
+                      for (var leafattr in actSummary[mainattr][subattr]) {
+                        if (!subject_session_summaryNode[mainattr][subattr][leafattr]) {
+                          subject_session_summaryNode[mainattr][subattr][leafattr] = actSummary[mainattr][subattr][leafattr] * actSummary[mainattr].number;
+                        } else {
+                          subject_session_summaryNode[mainattr][subattr][leafattr] += actSummary[mainattr][subattr][leafattr] * actSummary[mainattr].number;
+                        }
+                      }
+                    } else {
+                      if (!subject_session_summaryNode[mainattr][subattr]) {
+                        subject_session_summaryNode[mainattr][subattr] = actSummary[mainattr][subattr] * actSummary[mainattr].number;
+                      } else {
+                        subject_session_summaryNode[mainattr][subattr] += actSummary[mainattr][subattr] * actSummary[mainattr].number;
+                      }
+                    }
+                  }
+                } else {
+                  if (!subject_session_summaryNode[mainattr]) {
+                    subject_session_summaryNode[mainattr] = actSummary[mainattr];
+                  } else {
+                    subject_session_summaryNode[mainattr] += actSummary[mainattr];
+                  }
+                }
+              }
+            }
+
+            for (var mainattr in subject_session_summaryNode) {
+              if (subject_session_summaryNode[mainattr] === null) continue;
+              if (typeof subject_session_summaryNode[mainattr] == 'object') {
+                for (var subattr in subject_session_summaryNode[mainattr]) {
+                  if (subject_session_summaryNode[mainattr][subattr] === null) continue;
+                  if (typeof subject_session_summaryNode[mainattr][subattr] == 'object') {
+                    for (var leafattr in subject_session_summaryNode[mainattr][subattr]) {
+                      subject_session_summaryNode[mainattr][subattr][leafattr] = 1.0 * subject_session_summaryNode[mainattr][subattr][leafattr] / mainattrCount[mainattr];       
+                    }
+                  } else {
+                    subject_session_summaryNode[mainattr][subattr] = 1.0 * subject_session_summaryNode[mainattr][subattr] / mainattrCount[mainattr];
+                  }
+                }
+                subject_session_summaryNode[mainattr].number = mainattrCount[mainattr];
+              }
+            }
+
+            summaryTabel['subject_'+subjectID]['student_'+studentNode.studentID][sessionNode.sessionID] = subject_session_summaryNode;
+          }
+
+          // summarize for session
+          for (var rowLabel in summaryTabel) {
+            var cell = summaryTabel[rowLabel]['student_'+studentNode.studentID];
+            var sessionSummary = {};
+            var mainattrCount = {};
+
+            for (var sessionID in cell) {
+              if (sessionID == 'summary') throw "cannot! there shouldn't be any summary";
+
+              for (var mainattr in cell[sessionID]['summary']) {
+                if (cell[sessionID]['summary'][mainattr] === null) continue;
+                if (typeof cell[sessionID]['summary'][mainattr] == 'object') {
+                  if (!mainattrCount[mainattr]) {
+                    mainattrCount[mainattr] = cell[sessionID]['summary'][mainattr].number;
+                  } else {
+                    mainattrCount[mainattr] += cell[sessionID]['summary'][mainattr].number;
+                  }
+
+                  if (!sessionSummary[mainattr]) {
+                    sessionSummary[mainattr] = {};
+                  }
+
+                  for (var subattr in cell[sessionID]['summary'][mainattr]) {
+                    if (subattr == 'number') continue;
+                    if (cell[sessionID]['summary'][mainattr][subattr] === null) continue;
+                    if (typeof cell[sessionID]['summary'][mainattr][subattr] == 'object') {
+                      if (!sessionSummary[mainattr][subattr]) {
+                        sessionSummary[mainattr][subattr] = {};
+                      }
+                      for (var leafattr in cell[sessionID]['summary'][mainattr][subattr]) {
+                        if (!sessionSummary[mainattr][subattr][leafattr]) {
+                          sessionSummary[mainattr][subattr][leafattr] = cell[sessionID]['summary'][mainattr][subattr][leafattr] * cell[sessionID]['summary'][mainattr].number;
+                        } else {
+                          sessionSummary[mainattr][subattr][leafattr] += cell[sessionID]['summary'][mainattr][subattr][leafattr] * cell[sessionID]['summary'][mainattr].number;
+                        }
+                      }
+                    } else {
+                      if (!sessionSummary[mainattr][subattr]) {
+                        sessionSummary[mainattr][subattr] = cell[sessionID]['summary'][mainattr][subattr] * cell[sessionID]['summary'][mainattr].number;
+                      } else {
+                        sessionSummary[mainattr][subattr] += cell[sessionID]['summary'][mainattr][subattr] * cell[sessionID]['summary'][mainattr].number;
+                      }
+                    }                    
+                  }
+                } else {
+                  if (!sessionSummary[mainattr]) {
+                    sessionSummary[mainattr] = cell[sessionID]['summary'][mainattr];
+                  } else {
+                    sessionSummary[mainattr] += cell[sessionID]['summary'][mainattr];
+                  }
+                }
+              }
+            }
+
+            for (var mainattr in sessionSummary) {
+              if (sessionSummary[mainattr] === null) continue;
+              if (typeof sessionSummary[mainattr] == 'object') {
+                for (var subattr in sessionSummary[mainattr]) {
+                  if (sessionSummary[mainattr][subattr] === null) continue;
+                  if (typeof sessionSummary[mainattr][subattr] == 'object') {
+                    for (var leafattr in sessionSummary[mainattr][subattr]) {
+                      sessionSummary[mainattr][subattr][leafattr] = 1.0 * sessionSummary[mainattr][subattr][leafattr] / mainattrCount[mainattr];
+                    }
+                  } else {
+                    sessionSummary[mainattr][subattr] = 1.0 * sessionSummary[mainattr][subattr] / mainattrCount[mainattr];
+                  }
+                }
+                sessionSummary[mainattr].number = mainattrCount[mainattr];
+              }
+            }
+
+            summaryTabel[rowLabel]['student_'+studentNode.studentID].summary = sessionSummary;
+          }
+
+        }
+
+      }
+
+      property['class_5'] = {};
+      property['class_6'] = {};
+      property['class_7'] = {};
+      property['class_8'] = {};
+      property['class_9'] = {};
+      property['class_10'] = {};
+      property['class_11'] = {};
+      property['class_12'] = {};
+      property['class_13'] = {};
+      property['class_14'] = {};
+      property['class_5'].className = 'Euler 1';
+      property['class_6'].className = 'Gauss 1';
+      property['class_7'].className = 'Newton 1';
+      property['class_8'].className = 'Pythagoras 1';
+      property['class_9'].className = 'Archimedes 1';
+      property['class_10'].className = 'Euler 2';
+      property['class_11'].className = 'Gauss 2';
+      property['class_12'].className = 'Newton 2';
+      property['class_13'].className = 'Pythagoras 2';
+      property['class_14'].className = 'Archimedes 2';
+      property['class_5'].schoolID = 2;
+      property['class_6'].schoolID = 2;
+      property['class_7'].schoolID = 2;
+      property['class_8'].schoolID = 2;
+      property['class_9'].schoolID = 2;
+      property['class_10'].schoolID = 2;
+      property['class_11'].schoolID = 2;
+      property['class_12'].schoolID = 2;
+      property['class_13'].schoolID = 2;
+      property['class_14'].schoolID = 2;
+
+      for(var fieldAttr in summaryTabel) {
+        if (fieldAttr.indexOf('_question_') || fieldAttr.indexOf('_video_')) {
+          for (var classID = 5; classID < 14; classID++) {
+            var summaryNode = {};
+            summaryNode.number = 0;
+
+            for (var colLabel in summaryTabel[fieldAttr]) {
+              if (colLabel.indexOf('student_') < 0 || property[colLabel].classID != classID) continue;
+              var cellSummary = summaryTabel[fieldAttr][colLabel].summary;
+              if (!cellSummary) console.log('no summary?! '+ fieldAttr + '   ' + colLabel);
+
+              for (var mainattr in cellSummary) {
+                if (mainattr == 'number') {
+                  summaryNode.number += cellSummary[mainattr];
+                } else if (cellSummary[mainattr] === null) {
+                  continue;
+                } else if (typeof cellSummary[mainattr] == 'object'){
+                  if (!summaryNode[mainattr]) {
+                    summaryNode[mainattr] = {};
+                  }
+                  for (var subattr in cellSummary[mainattr]) {
+                    if (!summaryNode[mainattr][subattr]) {
+                      summaryNode[mainattr][subattr] = cellSummary[mainattr][subattr] * summaryNode.number;
+                    } else {
+                      summaryNode[mainattr][subattr] += cellSummary[mainattr][subattr] * summaryNode.number;
+                    }
+                  }
+                } else {
+                  if (!summaryNode[mainattr]) {
+                    summaryNode[mainattr] = cellSummary[mainattr] * summaryNode.number;
+                  } else {
+                    summaryNode[mainattr] += cellSummary[mainattr] * summaryNode.number;
+                  }
+                }
+              }
+            }
+
+            for (var mainattr in summaryNode) {
+              if (mainattr == 'number') continue;
+              if (summaryNode[mainattr] === null) continue;
+              if (typeof summaryNode[mainattr] == 'object') {
+                for (var subattr in summaryNode[mainattr]) {
+                  summaryNode[mainattr][subattr] = 1.0 * summaryNode[mainattr][subattr] / summaryNode.number;
+                }
+              } else {
+                summaryNode[mainattr] = 1.0 * summaryNode[mainattr] / summaryNode.number;
+              }
+            }
+
+            summaryTabel[fieldAttr]['class_'+classID] = summaryNode;
+
+          }
+        } else {
+
+          for (var classID = 5; classID < 14; classID++) {
+            var summaryNode = {};
+            summaryNode.number = 0;
+            var mainattrCount = {};
+
+            for (var colLabel in summaryTabel[fieldAttr]) {
+              if (colLabel.indexOf('student_') < 0 || property[colLabel].classID != classID) continue;
+              summaryNode.number++;
+              var cellSummary = summaryTabel[fieldAttr][colLabel].summary;
+              if (!cellSummary) console.log('no summary?! '+ fieldAttr + '   ' + colLabel);
+
+              for (var mainattr in cellSummary) {
+                if (cellSummary[mainattr] === null) continue;
+                if (typeof cellSummary[mainattr] == 'object') {
+                  if (!mainattrCount[mainattr]) {
+                    mainattrCount[mainattr] = cellSummary[mainattr].number;
+                  } else {
+                    mainattrCount[mainattr] += cellSummary[mainattr].number;
+                  }
+                  if (!summaryNode[mainattr]) {
+                    summaryNode[mainattr] = {};
+                  }
+
+                  for (var subattr in cellSummary[mainattr]) {
+                    if (subattr == 'number') continue;
+                    if (cellSummary[mainattr][subattr] === null) continue;
+                    if (typeof cellSummary[mainattr][subattr] == 'object') {
+                      if (!summaryNode[mainattr][subattr]) {
+                        summaryNode[mainattr][subattr] = {};
+                      }
+                      for (var leafattr in cellSummary[mainattr][subattr]) {
+                        if (!summaryNode[mainattr][subattr][leafattr]) {
+                          summaryNode[mainattr][subattr][leafattr] = cellSummary[mainattr][subattr][leafattr] * cellSummary[mainattr].number;
+                        } else {
+                          summaryNode[mainattr][subattr][leafattr] += cellSummary[mainattr][subattr][leafattr] * cellSummary[mainattr].number;
+                        }
+                      }
+                    } else {
+                      if (!summaryNode[mainattr][subattr]) {
+                        summaryNode[mainattr][subattr] = cellSummary[mainattr][subattr] * cellSummary[mainattr].number;
+                      } else {
+                        summaryNode[mainattr][subattr] += cellSummary[mainattr][subattr] * cellSummary[mainattr].number;
+                      }
+                    }
+                  }
+
+                } else {
+                  if (!summaryNode[mainattr]){
+                    summaryNode[mainattr] = cellSummary[mainattr];
+                  } else {
+                    summaryNode[mainattr] += cellSummary[mainattr];
+                  }
+                }
+              }
+
+            }
+
+            for (var mainattr in summaryNode) {
+              if (mainattr == 'number') continue;
+              if (summaryNode[mainattr] === null) continue;
+              if (typeof summaryNode[mainattr] == 'object') {
+                for (var subattr in summaryNode[mainattr]) {
+                  if (subattr == 'number') continue;
+                  if (summaryNode[mainattr][subattr] === null) continue;
+                  if (typeof summaryNode[mainattr][subattr] == 'object') {
+                    for (var leafattr in summaryNode[mainattr][subattr]) {
+                      summaryNode[mainattr][subattr][leafattr] = 1.0 * summaryNode[mainattr][subattr][leafattr] / mainattrCount[mainattr];
+                    }
+                  } else {
+                    summaryNode[mainattr][subattr] = 1.0 * summaryNode[mainattr][subattr] / mainattrCount[mainattr];
+                  }
+                }
+                summaryNode[mainattr].number = mainattrCount[mainattr];
+              } else {
+                summaryNode[mainattr] = 1.0 * summaryNode[mainattr] / summaryNode.number;
+              }
+            }
+
+            summaryTabel[fieldAttr]['class_'+classID] = summaryNode;
+          }
+        }   
+      }
+
+      var schoolID = 2;
+      for (var fieldAttr in summaryTabel) {
+        if (fieldAttr.indexOf('_question_') || fieldAttr.indexOf('_video_')) {
+          var summaryNode = {};
+          summaryNode.number = 0;
+          for (var colLabel in summaryTabel[fieldAttr]) {
+            if (colLabel.indexOf('class_') < 0 || property[colLabel].schoolID != schoolID) continue;
+            var cellSummary = summaryTabel[fieldAttr][colLabel];
+            if (!cellSummary) console.log('no summary?! '+ fieldAttr + '   ' + colLabel);
+
+            for (var mainattr in cellSummary) {
+              if (mainattr == 'number') {
+                summaryNode.number += cellSummary[mainattr];
+              } else if (cellSummary[mainattr] === null) {
+                continue;
+              } else if (typeof cellSummary[mainattr] == 'object'){
+                if (!summaryNode[mainattr]) {
+                  summaryNode[mainattr] = {};
+                }
+                for (var subattr in cellSummary[mainattr]) {
+                  if (!summaryNode[mainattr][subattr]) {
+                    summaryNode[mainattr][subattr] = cellSummary[mainattr][subattr] * summaryNode.number;
+                  } else {
+                    summaryNode[mainattr][subattr] += cellSummary[mainattr][subattr] * summaryNode.number;
+                  }
+                }
+              } else {
+                if (!summaryNode[mainattr]) {
+                  summaryNode[mainattr] = cellSummary[mainattr] * summaryNode.number;
+                } else {
+                  summaryNode[mainattr] += cellSummary[mainattr] * summaryNode.number;
+                }
+              }
+            }
+          }
+
+          for (var mainattr in summaryNode) {
+            if (mainattr == 'number') continue;
+            if (summaryNode[mainattr] === null) continue;
+            if (typeof summaryNode[mainattr] == 'object') {
+              for (var subattr in summaryNode[mainattr]) {
+                summaryNode[mainattr][subattr] = 1.0 * summaryNode[mainattr][subattr] / summaryNode.number;
+              }
+            } else {
+              summaryNode[mainattr] = 1.0 * summaryNode[mainattr] / summaryNode.number;
+            }
+          }
+
+          summaryTabel[fieldAttr]['school_'+schoolID] = summaryNode;
+
+        } else {
+          var summaryNode = {};
+          summaryNode.number = 0;
+          var mainattrCount = {};
+
+          for (var colLabel in summaryTabel[fieldAttr]) {
+            if (colLabel.indexOf('class_') < 0 || property[colLabel].schoolID != schoolID) continue;
+            summaryNode.number++;
+            var cellSummary = summaryTabel[fieldAttr][colLabel];
+            if (!cellSummary) console.log('no summary?! '+ fieldAttr + '   ' + colLabel);
+
+            for (var mainattr in cellSummary) {
+              if (cellSummary[mainattr] === null) continue;
+              if (typeof cellSummary[mainattr] == 'object') {
+                if (!mainattrCount[mainattr]) {
+                  mainattrCount[mainattr] = cellSummary[mainattr].number;
+                } else {
+                  mainattrCount[mainattr] += cellSummary[mainattr].number;
+                }
+                if (!summaryNode[mainattr]) {
+                  summaryNode[mainattr] = {};
+                }
+
+                for (var subattr in cellSummary[mainattr]) {
+                  if (subattr == 'number') continue;
+                  if (cellSummary[mainattr][subattr] === null) continue;
+                  if (typeof cellSummary[mainattr][subattr] == 'object') {
+                    if (!summaryNode[mainattr][subattr]) {
+                      summaryNode[mainattr][subattr] = {};
+                    }
+                    for (var leafattr in cellSummary[mainattr][subattr]) {
+                      if (!summaryNode[mainattr][subattr][leafattr]) {
+                        summaryNode[mainattr][subattr][leafattr] = cellSummary[mainattr][subattr][leafattr] * cellSummary[mainattr].number;
+                      } else {
+                        summaryNode[mainattr][subattr][leafattr] += cellSummary[mainattr][subattr][leafattr] * cellSummary[mainattr].number;
+                      }
+                    }
+                  } else {
+                    if (!summaryNode[mainattr][subattr]) {
+                      summaryNode[mainattr][subattr] = cellSummary[mainattr][subattr] * cellSummary[mainattr].number;
+                    } else {
+                      summaryNode[mainattr][subattr] += cellSummary[mainattr][subattr] * cellSummary[mainattr].number;
+                    }
+                  }
+                }
+
+              } else {
+                if (!summaryNode[mainattr]){
+                  summaryNode[mainattr] = cellSummary[mainattr];
+                } else {
+                  summaryNode[mainattr] += cellSummary[mainattr];
+                }
+              }
+            }
+          }
+
+          for (var mainattr in summaryNode) {
+            if (mainattr == 'number') continue;
+            if (summaryNode[mainattr] === null) continue;
+            if (typeof summaryNode[mainattr] == 'object') {
+              for (var subattr in summaryNode[mainattr]) {
+                if (subattr == 'number') continue;
+                if (summaryNode[mainattr][subattr] === null) continue;
+                if (typeof summaryNode[mainattr][subattr] == 'object') {
+                  for (var leafattr in summaryNode[mainattr][subattr]) {
+                    summaryNode[mainattr][subattr][leafattr] = 1.0 * summaryNode[mainattr][subattr][leafattr] / mainattrCount[mainattr];
+                  }
+                } else {
+                  summaryNode[mainattr][subattr] = 1.0 * summaryNode[mainattr][subattr] / mainattrCount[mainattr];
+                }
+              }
+              summaryNode[mainattr].number = mainattrCount[mainattr];
+            } else {
+              summaryNode[mainattr] = 1.0 * summaryNode[mainattr] / summaryNode.number;
+            }
+          }
+
+          summaryTabel[fieldAttr]['school_'+schoolID] = summaryNode;
+        }
+      }
+
+      summarizequestion_finisher();
+    }
+
+    function summarizequestion_finisher() {
+      storage.setItemSync('summaryTabel', summaryTabel);
+      storage.setItemSync('propertyList', property);
+      sendResponse('done');
+    }
+
+  },
   // // calculate the values across cohort
   // "/api/macro": function(parsedUrl) {
   //   return {unixtime: (new Date(parsedUrl.query.iso)).getTime()};
@@ -378,6 +1333,12 @@ var routes = {
 
     return {};
   },
+  "/api/getTable": function() {
+    if (!summaryTabel) {
+      summaryTabel = storage.getItemSync('summaryTabel');
+    }
+    sendResponse(JSON.stringify(summaryTabel));
+  },
   "/api/clear": function() {
     storage.clearSync();
     sendResponse('done!');
@@ -397,6 +1358,7 @@ var videoDuration = {
   'pjjSp46ffjQ':48,
   'bwm5pv3UiYE':75,
   'LlFw4UPv4L4':81,
+
   'Jx9mtdx-7aQ':48,
   'jcc0WBVtO90':73,
   '0lf0YACerzY':81,
@@ -410,12 +1372,11 @@ function processStudentLog(studentNode) {
     return;
   }
 
-  Object.keys(studentNode.subjects).forEach(function(subjectKey){
-
+  for (var subjectKey in studentNode.subjects) {
     currentSubjectNode = studentNode.subjects[subjectKey];
-    if (currentSubjectNode.progress <= 1) {
-      return;
-    }
+    // if (currentSubjectNode.progress <= 1) {
+    //   return;
+    // }
     if (!currentSubjectNode.sessions) { // somehow student with no actions came to further progress (e.g, studentID = 257)
       currentSubjectNode.progress = 1;
       return;
@@ -1072,6 +2033,11 @@ function processStudentLog(studentNode) {
           // if (!questionData) {
           //   throw ("where is the question?!?! id= " + questionNode.id);
           // }
+
+          if (!questionNode.highlightedWords) {
+            questionNode.highlightedWords = [];
+          }
+
           if (!questionNode.workout_planType) {
             questionNode.workout_planType = {};
             questionNode.workout_planType.times = 0;
@@ -1122,6 +2088,11 @@ function processStudentLog(studentNode) {
           for (var sequenceIndex = 0; sequenceIndex < questionNode.sequence.length; sequenceIndex++) {
             sequenceNode = questionNode.sequence[sequenceIndex];
             switch(sequenceNode.label) {
+              case 'I':
+                for (var keywordIndex = 0; keywordIndex < sequenceNode.highlightedWords.length; keywordIndex++) {
+                  questionNode.highlightedWords.push(sequenceNode.highlightedWords[keywordIndex]);
+                }
+                break;
               case 'G':
                 for (var typeIndex = 0; typeIndex<sequenceNode.select_type.length; typeIndex++){
                   questionNode.workout_planType.times ++;
@@ -1231,11 +2202,16 @@ function processStudentLog(studentNode) {
 
           // update questionSummary
           currentActivityNode.questionSummary.questionNumber++;
-          currentActivityNode.questionSummary.questionNumber += questionNode.duration;
+          currentActivityNode.questionSummary.duration += questionNode.duration;
+          
           if (questionNode.highlightedWords) {
             for (var i_highlight = 0; i_highlight<questionNode.highlightedWords.length; i_highlight++) {
               if (questionNode.highlightedWords[i_highlight].highlight) {
                 currentActivityNode.questionSummary.highlightedWords ++;    
+              } else {
+                currentActivityNode.questionSummary.highlightedWords --;
+                if (currentActivityNode.questionSummary.highlightedWords < 0)
+                  currentActivityNode.questionSummary.highlightedWords = 0;
               }
             }
           }
@@ -1534,7 +2510,7 @@ function processStudentLog(studentNode) {
       currentSubjectNode.questionSummary.wrong_answer_reaction.review += currentSubjectNode.sessions[i_ssn].questionSummary.wrong_answer_reaction.review;
       currentSubjectNode.questionSummary.wrong_answer_reaction.hint += currentSubjectNode.sessions[i_ssn].questionSummary.wrong_answer_reaction.hint;
     }
-  });
+  }
   // end of subjects
 }
 
@@ -1638,7 +2614,7 @@ var server = http.createServer(function(request, response) {
     _response.end();
   }
 });
-//server.listen(1337,'127.0.0.1');
+// server.listen(1337,'127.0.0.1');
 // production
 server.listen(8000,'127.0.0.1');
 console.log('running');

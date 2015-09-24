@@ -275,7 +275,7 @@ var routes = {
         if (row.correct === null)
           eventNode.correct = null;
         else
-          eventNode.correct = !!row.correct; // bit operation
+          eventNode.correct = !!row.correct[0]; // bit operation
 
         currentActivityNode.events.push(eventNode);
       });
@@ -432,21 +432,24 @@ var routes = {
 
     function object_initialization() {
 
-      for (var fieldAttr in summaryTabel) {
-        summaryTabel[fieldAttr]['school_2'] = {};
-        summaryTabel[fieldAttr]['class_5'] = {};
-        summaryTabel[fieldAttr]['class_6'] = {};
-        summaryTabel[fieldAttr]['class_7'] = {};
-        summaryTabel[fieldAttr]['class_8'] = {};
-        summaryTabel[fieldAttr]['class_9'] = {};
-        summaryTabel[fieldAttr]['class_10'] = {};
-        summaryTabel[fieldAttr]['class_11'] = {};
-        summaryTabel[fieldAttr]['class_12'] = {};
-        summaryTabel[fieldAttr]['class_13'] = {};
-        summaryTabel[fieldAttr]['class_14'] = {};
+      for (var rowLabel in summaryTabel) {
+        // summaryTabel[rowLabel]['student_138'] = {};
+        // continue;
+
+        summaryTabel[rowLabel]['school_2'] = {};
+        summaryTabel[rowLabel]['class_5'] = {};
+        summaryTabel[rowLabel]['class_6'] = {};
+        summaryTabel[rowLabel]['class_7'] = {};
+        summaryTabel[rowLabel]['class_8'] = {};
+        summaryTabel[rowLabel]['class_9'] = {};
+        summaryTabel[rowLabel]['class_10'] = {};
+        summaryTabel[rowLabel]['class_11'] = {};
+        summaryTabel[rowLabel]['class_12'] = {};
+        summaryTabel[rowLabel]['class_13'] = {};
+        summaryTabel[rowLabel]['class_14'] = {};
 
         for(var i = 0; i< operational.students.length; i++) {
-          summaryTabel[fieldAttr]['student_' + operational.students[i]] = {};
+          summaryTabel[rowLabel]['student_' + operational.students[i]] = {};
         }
       }
 
@@ -455,7 +458,7 @@ var routes = {
 
     function summarize_question_view() {
       for(var i = 0; i< operational.students.length; i++) {
-        // if (operational.students[i] != 138) continue; //--- used for debugging purpose
+        //if (operational.students[i] != 138) continue; //--- used for debugging purpose
         var studentNode = storage.getItemSync('student_' + operational.students[i]);
         if (!studentNode) throw "summarize: cannot find the student";
 
@@ -484,9 +487,10 @@ var routes = {
 
                 if (summaryTabel['activity_'+activityNode.activityID+'_question_'+questionNode.id]) {
                   if (!summaryTabel['activity_'+activityNode.activityID+'_question_'+questionNode.id]['student_'+studentNode.studentID][sessionNode.sessionID]) {
-                    summaryTabel['activity_'+activityNode.activityID+'_question_'+questionNode.id]['student_'+studentNode.studentID][sessionNode.sessionID] = [];  
+                    summaryTabel['activity_'+activityNode.activityID+'_question_'+questionNode.id]['student_'+studentNode.studentID][sessionNode.sessionID] = {};  
+                    summaryTabel['activity_'+activityNode.activityID+'_question_'+questionNode.id]['student_'+studentNode.studentID][sessionNode.sessionID].instances = [];
                   }
-                  summaryTabel['activity_'+activityNode.activityID+'_question_'+questionNode.id]['student_'+studentNode.studentID][sessionNode.sessionID].push(questionNode);
+                  summaryTabel['activity_'+activityNode.activityID+'_question_'+questionNode.id]['student_'+studentNode.studentID][sessionNode.sessionID].instances.push(questionNode);
 
                 //   var bla = '';
                 //   for (var j = 0; j<questionNode.sequence.length; j++) {
@@ -506,8 +510,8 @@ var routes = {
               //questions per session
               for (var rowLabel in summaryTabel) {
                 if (rowLabel.indexOf('activity_'+activityNode.activityID+'_question_') < 0) continue;
-
-                cell = summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID];
+                if (!summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID]) continue;
+                cell = summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].instances;
                 if (!cell) continue;
 
                 var questionSummaryNode = {};
@@ -628,7 +632,10 @@ var routes = {
               }
 
               for (var videoID in activityNode.videos) {
-                summaryTabel['activity_'+activityNode.activityID+'_video_'+videoID]['student_'+studentNode.studentID][sessionNode.sessionID] = activityNode.videos[videoID];
+                if (!summaryTabel['activity_'+activityNode.activityID+'_video_'+videoID]['student_'+studentNode.studentID][sessionNode.sessionID]) {
+                  summaryTabel['activity_'+activityNode.activityID+'_video_'+videoID]['student_'+studentNode.studentID][sessionNode.sessionID] = {};
+                }
+                summaryTabel['activity_'+activityNode.activityID+'_video_'+videoID]['student_'+studentNode.studentID][sessionNode.sessionID].instances = activityNode.videos[videoID];
 
                 var videoSummaryNode = {};
                 videoSummaryNode.number = 0;
@@ -658,9 +665,9 @@ var routes = {
               }
 
               if (!summaryTabel['activity_'+activityNode.activityID]['student_'+studentNode.studentID][sessionNode.sessionID]) {
-                summaryTabel['activity_'+activityNode.activityID]['student_'+studentNode.studentID][sessionNode.sessionID] = [];
+                summaryTabel['activity_'+activityNode.activityID]['student_'+studentNode.studentID][sessionNode.sessionID] = {};
+                summaryTabel['activity_'+activityNode.activityID]['student_'+studentNode.studentID][sessionNode.sessionID].instances = [];
               }
-
               var activitySummaryNode = {};
 
               activitySummaryNode.completedActivities = activityNode.completed ? 1 : 0;
@@ -711,7 +718,9 @@ var routes = {
               activitySummaryNode.video.pauseDuration = 0; 
               activitySummaryNode.video.watchedPercentage = 0;
               for (var videoID in activityNode.videos) {
-                var videoNode = activityNode.videos[videoID].summary;
+                if (!summaryTabel['activity_'+activityNode.activityID+'_video_'+videoID]['student_'+studentNode.studentID][sessionNode.sessionID])
+                  continue;
+                var videoNode = summaryTabel['activity_'+activityNode.activityID+'_video_'+videoID]['student_'+studentNode.studentID][sessionNode.sessionID].summary;
                 activitySummaryNode.video.number += videoNode.number;
                 activitySummaryNode.video.activeDuration += videoNode.activeDuration * videoNode.number;
                 activitySummaryNode.video.pauseTimes += videoNode.pauseTimes * videoNode.number;
@@ -729,7 +738,7 @@ var routes = {
               if (!activitySummaryNode.video.pauseDuration) activitySummaryNode.video.pauseDuration = 0;
               if (!activitySummaryNode.video.watchedPercentage) activitySummaryNode.video.watchedPercentage = 0;
 
-              summaryTabel['activity_'+activityNode.activityID]['student_'+studentNode.studentID][sessionNode.sessionID].push(activitySummaryNode);
+              summaryTabel['activity_'+activityNode.activityID]['student_'+studentNode.studentID][sessionNode.sessionID].instances.push(activitySummaryNode);
             }
             
             // summarize individual activity for each session
@@ -740,90 +749,28 @@ var routes = {
                 continue;
               if (!summaryTabel[rowLabel] || !summaryTabel[rowLabel]['student_'+studentNode.studentID] || !summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID])
                 continue;
-
-              var count = summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].length;
+              var count = summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].instances.length;
               if (count === 0) {
                 continue;
               } else if (count == 1) {
-                summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].summary = summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID][0];
+                summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].summary = summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].instances[0];
               } else {
-                var activitySummary = {};
-                var mainattrCount = {};
+                var nodeList = [];
                 for(var i_act = 0; i_act < count; i_act++) {
-                  var actNode = summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID][i_act];
-                  
-                  for(var mainattr in actNode) {
-                    if (actNode[mainattr] === null) {
-                      continue;
-                    } else if (typeof actNode[mainattr] == 'object') {
-                      if (!mainattrCount[mainattr]) {
-                        mainattrCount[mainattr] = actNode[mainattr].number;
-                      } else {
-                        mainattrCount[mainattr] += actNode[mainattr].number;
-                      }
-                      if (!activitySummary[mainattr]) {
-                        activitySummary[mainattr] = {};
-                      }
-
-                      for(var subattr in actNode[mainattr]) {
-                        if (subattr == 'number') continue;
-                        if (actNode[mainattr][subattr] === null) continue;
-                        if (typeof actNode[mainattr][subattr] == 'object') {
-                          if (!activitySummary[mainattr][subattr]) {
-                            activitySummary[mainattr][subattr] = {};
-                          }
-                          for (var leafattr in actNode[mainattr][subattr]) {
-                            if (!activitySummary[mainattr][subattr][leafattr]) {
-                              activitySummary[mainattr][subattr][leafattr] = actNode[mainattr][subattr][leafattr] * actNode[mainattr].number;
-                            } else {
-                              activitySummary[mainattr][subattr][leafattr] += actNode[mainattr][subattr][leafattr] * actNode[mainattr].number;
-                            }
-                          }
-                        } else {
-                          if (!activitySummary[mainattr][subattr]) {
-                            activitySummary[mainattr][subattr] = actNode[mainattr][subattr] * actNode[mainattr].number;
-                          } else {
-                            activitySummary[mainattr][subattr] += actNode[mainattr][subattr] * actNode[mainattr].number;
-                          }
-                        }
-                      }
-
-                    } else {
-                      if (!activitySummary[mainattr]) {
-                        activitySummary[mainattr] = actNode[mainattr];
-                      } else {
-                        activitySummary[mainattr] += actNode[mainattr];
-                      }
-                    }
+                  if (summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].instances[i_act]) {
+                    nodeList.push(summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].instances[i_act]);
                   }
                 }
 
-                for (var mainattr in activitySummary) {
-                  if (activitySummary[mainattr] === null) continue;
-                  if (typeof activitySummary[mainattr] == 'object') {
-                    for (var subattr in activitySummary[mainattr]) {
-                      if (activitySummary[mainattr][subattr] === null) continue;
-                      if (typeof activitySummary[mainattr][subattr] == 'object') {
-                        for (var leafattr in activitySummary[mainattr][subattr]) {
-                          activitySummary[mainattr][subattr][leafattr] = 1.0 * activitySummary[mainattr][subattr][leafattr] / mainattrCount[mainattr];
-                        }
-                      } else {
-                        activitySummary[mainattr][subattr] = 1.0 * activitySummary[mainattr][subattr] / mainattrCount[mainattr];
-                      }
-                    }
-
-                    activitySummary[mainattr].number = mainattrCount[mainattr];
-                  }
+                if (nodeList.length > 0) {
+                  summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].summary = aggregate(nodeList);  
                 }
-                activitySummary.number = count;
-
-                summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].summary = activitySummary;
+                
               }
             }
 
             // summarize subject for each session (from the activities)
-            var subject_session_summaryNode = {};
-            var mainattrCount = {};
+            var nodeList = [];
             for (var rowLabel in summaryTabel) {
               if (rowLabel.indexOf('activity_') !== 0 || 
                 rowLabel.indexOf('_question_') > 0 ||
@@ -833,452 +780,221 @@ var routes = {
               if (!summaryTabel[rowLabel] || ! summaryTabel[rowLabel]['student_'+studentNode.studentID] || !summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID])
                 continue;
 
-              var actSummary = summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].summary;
-              if (!actSummary) continue;
-
-              for(var mainattr in actSummary) {
-                if (actSummary[mainattr] === null) continue;
-                if (typeof actSummary[mainattr] == 'object') {
-                  if (!mainattrCount[mainattr]) {
-                    mainattrCount[mainattr] = actSummary[mainattr].number;
-                  } else {
-                    mainattrCount[mainattr] += actSummary[mainattr].number;
-                  }
-
-                  if (!subject_session_summaryNode[mainattr]) {
-                    subject_session_summaryNode[mainattr] = {};
-                  }
-
-                  for (var subattr in actSummary[mainattr]) {
-                    if (subattr == 'number') continue;
-                    if (actSummary[mainattr][subattr] === null) continue; 
-                    if (typeof actSummary[mainattr][subattr] == 'object') {
-                      if (!subject_session_summaryNode[mainattr][subattr]) {
-                        subject_session_summaryNode[mainattr][subattr] = {};
-                      }
-                      for (var leafattr in actSummary[mainattr][subattr]) {
-                        if (!subject_session_summaryNode[mainattr][subattr][leafattr]) {
-                          subject_session_summaryNode[mainattr][subattr][leafattr] = actSummary[mainattr][subattr][leafattr] * actSummary[mainattr].number;
-                        } else {
-                          subject_session_summaryNode[mainattr][subattr][leafattr] += actSummary[mainattr][subattr][leafattr] * actSummary[mainattr].number;
-                        }
-                      }
-                    } else {
-                      if (!subject_session_summaryNode[mainattr][subattr]) {
-                        subject_session_summaryNode[mainattr][subattr] = actSummary[mainattr][subattr] * actSummary[mainattr].number;
-                      } else {
-                        subject_session_summaryNode[mainattr][subattr] += actSummary[mainattr][subattr] * actSummary[mainattr].number;
-                      }
-                    }
-                  }
-                } else {
-                  if (!subject_session_summaryNode[mainattr]) {
-                    subject_session_summaryNode[mainattr] = actSummary[mainattr];
-                  } else {
-                    subject_session_summaryNode[mainattr] += actSummary[mainattr];
-                  }
-                }
+              if (summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].summary) {
+                nodeList.push(summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].summary);
               }
             }
 
-            for (var mainattr in subject_session_summaryNode) {
-              if (subject_session_summaryNode[mainattr] === null) continue;
-              if (typeof subject_session_summaryNode[mainattr] == 'object') {
-                for (var subattr in subject_session_summaryNode[mainattr]) {
-                  if (subject_session_summaryNode[mainattr][subattr] === null) continue;
-                  if (typeof subject_session_summaryNode[mainattr][subattr] == 'object') {
-                    for (var leafattr in subject_session_summaryNode[mainattr][subattr]) {
-                      subject_session_summaryNode[mainattr][subattr][leafattr] = 1.0 * subject_session_summaryNode[mainattr][subattr][leafattr] / mainattrCount[mainattr];       
-                    }
-                  } else {
-                    subject_session_summaryNode[mainattr][subattr] = 1.0 * subject_session_summaryNode[mainattr][subattr] / mainattrCount[mainattr];
-                  }
-                }
-                subject_session_summaryNode[mainattr].number = mainattrCount[mainattr];
-              }
+            if (nodeList.length > 0) {
+              summaryTabel['subject_'+subjectID]['student_'+studentNode.studentID][sessionNode.sessionID] = aggregate(nodeList);
             }
-
-            summaryTabel['subject_'+subjectID]['student_'+studentNode.studentID][sessionNode.sessionID] = subject_session_summaryNode;
           }
 
           // summarize for session
           for (var rowLabel in summaryTabel) {
             var cell = summaryTabel[rowLabel]['student_'+studentNode.studentID];
-            var sessionSummary = {};
-            var mainattrCount = {};
+            var nodeList = [];
 
-            for (var sessionID in cell) {
-              if (sessionID == 'summary') throw "cannot! there shouldn't be any summary";
-
-              for (var mainattr in cell[sessionID]['summary']) {
-                if (cell[sessionID]['summary'][mainattr] === null) continue;
-                if (typeof cell[sessionID]['summary'][mainattr] == 'object') {
-                  if (!mainattrCount[mainattr]) {
-                    mainattrCount[mainattr] = cell[sessionID]['summary'][mainattr].number;
-                  } else {
-                    mainattrCount[mainattr] += cell[sessionID]['summary'][mainattr].number;
-                  }
-
-                  if (!sessionSummary[mainattr]) {
-                    sessionSummary[mainattr] = {};
-                  }
-
-                  for (var subattr in cell[sessionID]['summary'][mainattr]) {
-                    if (subattr == 'number') continue;
-                    if (cell[sessionID]['summary'][mainattr][subattr] === null) continue;
-                    if (typeof cell[sessionID]['summary'][mainattr][subattr] == 'object') {
-                      if (!sessionSummary[mainattr][subattr]) {
-                        sessionSummary[mainattr][subattr] = {};
-                      }
-                      for (var leafattr in cell[sessionID]['summary'][mainattr][subattr]) {
-                        if (!sessionSummary[mainattr][subattr][leafattr]) {
-                          sessionSummary[mainattr][subattr][leafattr] = cell[sessionID]['summary'][mainattr][subattr][leafattr] * cell[sessionID]['summary'][mainattr].number;
-                        } else {
-                          sessionSummary[mainattr][subattr][leafattr] += cell[sessionID]['summary'][mainattr][subattr][leafattr] * cell[sessionID]['summary'][mainattr].number;
-                        }
-                      }
-                    } else {
-                      if (!sessionSummary[mainattr][subattr]) {
-                        sessionSummary[mainattr][subattr] = cell[sessionID]['summary'][mainattr][subattr] * cell[sessionID]['summary'][mainattr].number;
-                      } else {
-                        sessionSummary[mainattr][subattr] += cell[sessionID]['summary'][mainattr][subattr] * cell[sessionID]['summary'][mainattr].number;
-                      }
-                    }                    
-                  }
-                } else {
-                  if (!sessionSummary[mainattr]) {
-                    sessionSummary[mainattr] = cell[sessionID]['summary'][mainattr];
-                  } else {
-                    sessionSummary[mainattr] += cell[sessionID]['summary'][mainattr];
-                  }
+            if (rowLabel.indexOf('subject_') == 0) {
+              for (var sessionID in cell) {
+                if (cell[sessionID]) {
+                  nodeList.push(cell[sessionID]);  
+                }
+              }
+            } else {
+              for (var sessionID in cell) {
+                if (sessionID == 'summary') throw "cannot! there shouldn't be any summary";
+                if (cell[sessionID].summary) {
+                  nodeList.push(cell[sessionID].summary);  
                 }
               }
             }
 
-            for (var mainattr in sessionSummary) {
-              if (sessionSummary[mainattr] === null) continue;
-              if (typeof sessionSummary[mainattr] == 'object') {
-                for (var subattr in sessionSummary[mainattr]) {
-                  if (sessionSummary[mainattr][subattr] === null) continue;
-                  if (typeof sessionSummary[mainattr][subattr] == 'object') {
-                    for (var leafattr in sessionSummary[mainattr][subattr]) {
-                      sessionSummary[mainattr][subattr][leafattr] = 1.0 * sessionSummary[mainattr][subattr][leafattr] / mainattrCount[mainattr];
-                    }
-                  } else {
-                    sessionSummary[mainattr][subattr] = 1.0 * sessionSummary[mainattr][subattr] / mainattrCount[mainattr];
-                  }
-                }
-                sessionSummary[mainattr].number = mainattrCount[mainattr];
+            if (nodeList.length > 0) {
+              if ( rowLabel.indexOf('_question_') > 0 || rowLabel.indexOf('_video_') > 0 ) {
+                summaryTabel[rowLabel]['student_'+studentNode.studentID].summary = aggregateVideoQuestion(nodeList);  
+              } else {
+                summaryTabel[rowLabel]['student_'+studentNode.studentID].summary = aggregate(nodeList);
               }
             }
-
-            summaryTabel[rowLabel]['student_'+studentNode.studentID].summary = sessionSummary;
           }
-
         }
-
       }
 
-      property['class_5'] = {};
-      property['class_6'] = {};
-      property['class_7'] = {};
-      property['class_8'] = {};
-      property['class_9'] = {};
-      property['class_10'] = {};
-      property['class_11'] = {};
-      property['class_12'] = {};
-      property['class_13'] = {};
-      property['class_14'] = {};
-      property['class_5'].className = 'Euler 1';
-      property['class_6'].className = 'Gauss 1';
-      property['class_7'].className = 'Newton 1';
-      property['class_8'].className = 'Pythagoras 1';
-      property['class_9'].className = 'Archimedes 1';
-      property['class_10'].className = 'Euler 2';
-      property['class_11'].className = 'Gauss 2';
-      property['class_12'].className = 'Newton 2';
-      property['class_13'].className = 'Pythagoras 2';
-      property['class_14'].className = 'Archimedes 2';
-      property['class_5'].schoolID = 2;
-      property['class_6'].schoolID = 2;
-      property['class_7'].schoolID = 2;
-      property['class_8'].schoolID = 2;
-      property['class_9'].schoolID = 2;
-      property['class_10'].schoolID = 2;
-      property['class_11'].schoolID = 2;
-      property['class_12'].schoolID = 2;
-      property['class_13'].schoolID = 2;
-      property['class_14'].schoolID = 2;
+      // summarizequestion_finisher();
+      // return;
 
-      for(var fieldAttr in summaryTabel) {
-        if (fieldAttr.indexOf('_question_') || fieldAttr.indexOf('_video_')) {
-          for (var classID = 5; classID < 14; classID++) {
-            var summaryNode = {};
-            summaryNode.number = 0;
+      property['class_5'] = {};     property['class_5'].className = 'Euler 1';          property['class_5'].schoolID = 2;
+      property['class_6'] = {};     property['class_6'].className = 'Gauss 1';          property['class_6'].schoolID = 2;
+      property['class_7'] = {};     property['class_7'].className = 'Newton 1';         property['class_7'].schoolID = 2;
+      property['class_8'] = {};     property['class_8'].className = 'Pythagoras 1';     property['class_8'].schoolID = 2;
+      property['class_9'] = {};     property['class_9'].className = 'Archimedes 1';     property['class_9'].schoolID = 2;
+      property['class_10'] = {};    property['class_10'].className = 'Euler 2';         property['class_10'].schoolID = 2;
+      property['class_11'] = {};    property['class_11'].className = 'Gauss 2';         property['class_11'].schoolID = 2;
+      property['class_12'] = {};    property['class_12'].className = 'Newton 2';        property['class_12'].schoolID = 2;
+      property['class_13'] = {};    property['class_13'].className = 'Pythagoras 2';    property['class_13'].schoolID = 2;
+      property['class_14'] = {};    property['class_14'].className = 'Archimedes 2';    property['class_14'].schoolID = 2;
 
-            for (var colLabel in summaryTabel[fieldAttr]) {
-              if (colLabel.indexOf('student_') < 0 || property[colLabel].classID != classID) continue;
-              var cellSummary = summaryTabel[fieldAttr][colLabel].summary;
-              if (!cellSummary) console.log('no summary?! '+ fieldAttr + '   ' + colLabel);
+      for(var rowLabel in summaryTabel) {
+        for (var classID = 5; classID < 14; classID++) {
+          var nodeList = [];
 
-              for (var mainattr in cellSummary) {
-                if (mainattr == 'number') {
-                  summaryNode.number += cellSummary[mainattr];
-                } else if (cellSummary[mainattr] === null) {
-                  continue;
-                } else if (typeof cellSummary[mainattr] == 'object'){
-                  if (!summaryNode[mainattr]) {
-                    summaryNode[mainattr] = {};
-                  }
-                  for (var subattr in cellSummary[mainattr]) {
-                    if (!summaryNode[mainattr][subattr]) {
-                      summaryNode[mainattr][subattr] = cellSummary[mainattr][subattr] * summaryNode.number;
-                    } else {
-                      summaryNode[mainattr][subattr] += cellSummary[mainattr][subattr] * summaryNode.number;
-                    }
-                  }
-                } else {
-                  if (!summaryNode[mainattr]) {
-                    summaryNode[mainattr] = cellSummary[mainattr] * summaryNode.number;
-                  } else {
-                    summaryNode[mainattr] += cellSummary[mainattr] * summaryNode.number;
-                  }
-                }
-              }
-            }
+          for (var colLabel in summaryTabel[rowLabel]) {
+            if (colLabel.indexOf('student_') < 0 || property[colLabel].classID != classID) continue;
+            var cellSummary = summaryTabel[rowLabel][colLabel].summary;
+            //if (!cellSummary) console.log('no summary?! '+ rowLabel + '   ' + colLabel);
 
-            for (var mainattr in summaryNode) {
-              if (mainattr == 'number') continue;
-              if (summaryNode[mainattr] === null) continue;
-              if (typeof summaryNode[mainattr] == 'object') {
-                for (var subattr in summaryNode[mainattr]) {
-                  summaryNode[mainattr][subattr] = 1.0 * summaryNode[mainattr][subattr] / summaryNode.number;
-                }
-              } else {
-                summaryNode[mainattr] = 1.0 * summaryNode[mainattr] / summaryNode.number;
-              }
-            }
-
-            summaryTabel[fieldAttr]['class_'+classID] = summaryNode;
-
+            nodeList.push(cellSummary);
           }
-        } else {
 
-          for (var classID = 5; classID < 14; classID++) {
-            var summaryNode = {};
-            summaryNode.number = 0;
-            var mainattrCount = {};
-
-            for (var colLabel in summaryTabel[fieldAttr]) {
-              if (colLabel.indexOf('student_') < 0 || property[colLabel].classID != classID) continue;
-              summaryNode.number++;
-              var cellSummary = summaryTabel[fieldAttr][colLabel].summary;
-              if (!cellSummary) console.log('no summary?! '+ fieldAttr + '   ' + colLabel);
-
-              for (var mainattr in cellSummary) {
-                if (cellSummary[mainattr] === null) continue;
-                if (typeof cellSummary[mainattr] == 'object') {
-                  if (!mainattrCount[mainattr]) {
-                    mainattrCount[mainattr] = cellSummary[mainattr].number;
-                  } else {
-                    mainattrCount[mainattr] += cellSummary[mainattr].number;
-                  }
-                  if (!summaryNode[mainattr]) {
-                    summaryNode[mainattr] = {};
-                  }
-
-                  for (var subattr in cellSummary[mainattr]) {
-                    if (subattr == 'number') continue;
-                    if (cellSummary[mainattr][subattr] === null) continue;
-                    if (typeof cellSummary[mainattr][subattr] == 'object') {
-                      if (!summaryNode[mainattr][subattr]) {
-                        summaryNode[mainattr][subattr] = {};
-                      }
-                      for (var leafattr in cellSummary[mainattr][subattr]) {
-                        if (!summaryNode[mainattr][subattr][leafattr]) {
-                          summaryNode[mainattr][subattr][leafattr] = cellSummary[mainattr][subattr][leafattr] * cellSummary[mainattr].number;
-                        } else {
-                          summaryNode[mainattr][subattr][leafattr] += cellSummary[mainattr][subattr][leafattr] * cellSummary[mainattr].number;
-                        }
-                      }
-                    } else {
-                      if (!summaryNode[mainattr][subattr]) {
-                        summaryNode[mainattr][subattr] = cellSummary[mainattr][subattr] * cellSummary[mainattr].number;
-                      } else {
-                        summaryNode[mainattr][subattr] += cellSummary[mainattr][subattr] * cellSummary[mainattr].number;
-                      }
-                    }
-                  }
-
-                } else {
-                  if (!summaryNode[mainattr]){
-                    summaryNode[mainattr] = cellSummary[mainattr];
-                  } else {
-                    summaryNode[mainattr] += cellSummary[mainattr];
-                  }
-                }
-              }
-
+          if (nodeList.length > 0) {
+            if (rowLabel.indexOf('_question_') > 0 || rowLabel.indexOf('_video_') > 0) {
+              summaryTabel[rowLabel]['class_'+classID] = aggregateVideoQuestion(nodeList);
+            } else {
+              summaryTabel[rowLabel]['class_'+classID] = aggregate(nodeList);
             }
-
-            for (var mainattr in summaryNode) {
-              if (mainattr == 'number') continue;
-              if (summaryNode[mainattr] === null) continue;
-              if (typeof summaryNode[mainattr] == 'object') {
-                for (var subattr in summaryNode[mainattr]) {
-                  if (subattr == 'number') continue;
-                  if (summaryNode[mainattr][subattr] === null) continue;
-                  if (typeof summaryNode[mainattr][subattr] == 'object') {
-                    for (var leafattr in summaryNode[mainattr][subattr]) {
-                      summaryNode[mainattr][subattr][leafattr] = 1.0 * summaryNode[mainattr][subattr][leafattr] / mainattrCount[mainattr];
-                    }
-                  } else {
-                    summaryNode[mainattr][subattr] = 1.0 * summaryNode[mainattr][subattr] / mainattrCount[mainattr];
-                  }
-                }
-                summaryNode[mainattr].number = mainattrCount[mainattr];
-              } else {
-                summaryNode[mainattr] = 1.0 * summaryNode[mainattr] / summaryNode.number;
-              }
-            }
-
-            summaryTabel[fieldAttr]['class_'+classID] = summaryNode;
           }
-        }   
+        }
       }
 
       var schoolID = 2;
-      for (var fieldAttr in summaryTabel) {
-        if (fieldAttr.indexOf('_question_') || fieldAttr.indexOf('_video_')) {
-          var summaryNode = {};
-          summaryNode.number = 0;
-          for (var colLabel in summaryTabel[fieldAttr]) {
-            if (colLabel.indexOf('class_') < 0 || property[colLabel].schoolID != schoolID) continue;
-            var cellSummary = summaryTabel[fieldAttr][colLabel];
-            if (!cellSummary) console.log('no summary?! '+ fieldAttr + '   ' + colLabel);
+      for (var rowLabel in summaryTabel) {
+        var nodeList = [];
+        
+        for (var colLabel in summaryTabel[rowLabel]) {
+          if (colLabel.indexOf('class_') < 0 || property[colLabel].schoolID != schoolID) continue;
+          var cellSummary = summaryTabel[rowLabel][colLabel];
+          //if (!cellSummary) console.log('no summary?! '+ rowLabel + '   ' + colLabel);
+          nodeList.push(cellSummary);
+        }
 
-            for (var mainattr in cellSummary) {
-              if (mainattr == 'number') {
-                summaryNode.number += cellSummary[mainattr];
-              } else if (cellSummary[mainattr] === null) {
-                continue;
-              } else if (typeof cellSummary[mainattr] == 'object'){
-                if (!summaryNode[mainattr]) {
-                  summaryNode[mainattr] = {};
-                }
-                for (var subattr in cellSummary[mainattr]) {
-                  if (!summaryNode[mainattr][subattr]) {
-                    summaryNode[mainattr][subattr] = cellSummary[mainattr][subattr] * summaryNode.number;
-                  } else {
-                    summaryNode[mainattr][subattr] += cellSummary[mainattr][subattr] * summaryNode.number;
-                  }
-                }
-              } else {
-                if (!summaryNode[mainattr]) {
-                  summaryNode[mainattr] = cellSummary[mainattr] * summaryNode.number;
-                } else {
-                  summaryNode[mainattr] += cellSummary[mainattr] * summaryNode.number;
-                }
-              }
-            }
-          }
-
-          for (var mainattr in summaryNode) {
-            if (mainattr == 'number') continue;
-            if (summaryNode[mainattr] === null) continue;
-            if (typeof summaryNode[mainattr] == 'object') {
-              for (var subattr in summaryNode[mainattr]) {
-                summaryNode[mainattr][subattr] = 1.0 * summaryNode[mainattr][subattr] / summaryNode.number;
-              }
-            } else {
-              summaryNode[mainattr] = 1.0 * summaryNode[mainattr] / summaryNode.number;
-            }
-          }
-
-          summaryTabel[fieldAttr]['school_'+schoolID] = summaryNode;
-
+        if (rowLabel.indexOf('_question_') > 0 || rowLabel.indexOf('_video_') > 0) {
+          summaryTabel[rowLabel]['school_'+schoolID] = aggregateVideoQuestion(nodeList);
         } else {
-          var summaryNode = {};
-          summaryNode.number = 0;
-          var mainattrCount = {};
-
-          for (var colLabel in summaryTabel[fieldAttr]) {
-            if (colLabel.indexOf('class_') < 0 || property[colLabel].schoolID != schoolID) continue;
-            summaryNode.number++;
-            var cellSummary = summaryTabel[fieldAttr][colLabel];
-            if (!cellSummary) console.log('no summary?! '+ fieldAttr + '   ' + colLabel);
-
-            for (var mainattr in cellSummary) {
-              if (cellSummary[mainattr] === null) continue;
-              if (typeof cellSummary[mainattr] == 'object') {
-                if (!mainattrCount[mainattr]) {
-                  mainattrCount[mainattr] = cellSummary[mainattr].number;
-                } else {
-                  mainattrCount[mainattr] += cellSummary[mainattr].number;
-                }
-                if (!summaryNode[mainattr]) {
-                  summaryNode[mainattr] = {};
-                }
-
-                for (var subattr in cellSummary[mainattr]) {
-                  if (subattr == 'number') continue;
-                  if (cellSummary[mainattr][subattr] === null) continue;
-                  if (typeof cellSummary[mainattr][subattr] == 'object') {
-                    if (!summaryNode[mainattr][subattr]) {
-                      summaryNode[mainattr][subattr] = {};
-                    }
-                    for (var leafattr in cellSummary[mainattr][subattr]) {
-                      if (!summaryNode[mainattr][subattr][leafattr]) {
-                        summaryNode[mainattr][subattr][leafattr] = cellSummary[mainattr][subattr][leafattr] * cellSummary[mainattr].number;
-                      } else {
-                        summaryNode[mainattr][subattr][leafattr] += cellSummary[mainattr][subattr][leafattr] * cellSummary[mainattr].number;
-                      }
-                    }
-                  } else {
-                    if (!summaryNode[mainattr][subattr]) {
-                      summaryNode[mainattr][subattr] = cellSummary[mainattr][subattr] * cellSummary[mainattr].number;
-                    } else {
-                      summaryNode[mainattr][subattr] += cellSummary[mainattr][subattr] * cellSummary[mainattr].number;
-                    }
-                  }
-                }
-
-              } else {
-                if (!summaryNode[mainattr]){
-                  summaryNode[mainattr] = cellSummary[mainattr];
-                } else {
-                  summaryNode[mainattr] += cellSummary[mainattr];
-                }
-              }
-            }
-          }
-
-          for (var mainattr in summaryNode) {
-            if (mainattr == 'number') continue;
-            if (summaryNode[mainattr] === null) continue;
-            if (typeof summaryNode[mainattr] == 'object') {
-              for (var subattr in summaryNode[mainattr]) {
-                if (subattr == 'number') continue;
-                if (summaryNode[mainattr][subattr] === null) continue;
-                if (typeof summaryNode[mainattr][subattr] == 'object') {
-                  for (var leafattr in summaryNode[mainattr][subattr]) {
-                    summaryNode[mainattr][subattr][leafattr] = 1.0 * summaryNode[mainattr][subattr][leafattr] / mainattrCount[mainattr];
-                  }
-                } else {
-                  summaryNode[mainattr][subattr] = 1.0 * summaryNode[mainattr][subattr] / mainattrCount[mainattr];
-                }
-              }
-              summaryNode[mainattr].number = mainattrCount[mainattr];
-            } else {
-              summaryNode[mainattr] = 1.0 * summaryNode[mainattr] / summaryNode.number;
-            }
-          }
-
-          summaryTabel[fieldAttr]['school_'+schoolID] = summaryNode;
+          summaryTabel[rowLabel]['school_'+schoolID] = aggregate(nodeList);
         }
       }
 
       summarizequestion_finisher();
+    }
+
+    function aggregateVideoQuestion(nodeList) {
+      var summary = {};
+      summary.number = 0;
+
+      for(var i = 0; i < nodeList.length; i++) {
+        var node = nodeList[i];
+
+        for (var mainattr in node) {
+          if (mainattr == 'number') {
+            summary.number += node[mainattr];
+          } else if (node[mainattr] === null) {
+            continue;
+          } else if (typeof node[mainattr] == 'object') {
+            if (!summary[mainattr]) {
+              summary[mainattr] = {};
+            }
+            for (var subattr in node[mainattr]) {
+              if (!summary[mainattr][subattr]) {
+                summary[mainattr][subattr] = node[mainattr][subattr] * node.number? node[mainattr][subattr] * node.number : 0 ;
+              } else {
+                summary[mainattr][subattr] += node[mainattr][subattr] * node.number? node[mainattr][subattr] * node.number : 0;
+              }
+            }
+          } else {
+            if (!summary[mainattr]) {
+              summary[mainattr] = node[mainattr] * node.number ? node[mainattr] * node.number : 0;
+            } else {
+              summary[mainattr] += node[mainattr] * node.number ? node[mainattr] * node.number: 0;
+            }
+          }
+        }
+      }
+
+      for (var mainattr in summary) {
+        if (mainattr == 'number') continue;
+        if (summary[mainattr] === null) continue;
+        if (typeof summary[mainattr] == 'object') {
+          for (var subattr in summary[mainattr]) {
+            summary[mainattr][subattr] = 1.0 * summary[mainattr][subattr] / summary.number;
+          }
+        } else {
+          summary[mainattr] = 1.0 * summary[mainattr] / summary.number;
+        }
+      }
+
+      return summary;
+    }
+
+    function aggregate(nodeList) {
+      var summary = {};
+      var mainattrCount = {};
+      for(var i = 0; i < nodeList.length; i++) {
+        var node = nodeList[i];
+
+        for(var mainattr in node) {
+          if (typeof node[mainattr] == 'object') {
+            if (!mainattrCount[mainattr]) {
+              mainattrCount[mainattr] = node[mainattr].number;
+            } else {
+              mainattrCount[mainattr] += node[mainattr].number;
+            }
+            if (!summary[mainattr]) {
+              summary[mainattr] = {};
+            }
+
+            for (var subattr in node[mainattr]) {
+              if (subattr == 'number') continue;
+              if (node[mainattr][subattr] === null) continue;
+              if (typeof node[mainattr][subattr] == 'object') {
+                if (!summary[mainattr][subattr]) {
+                  summary[mainattr][subattr] = {};
+                }
+                for (var leafattr in node[mainattr][subattr]) {
+                  if (!summary[mainattr][subattr][leafattr]) {
+                    summary[mainattr][subattr][leafattr] = node[mainattr][subattr][leafattr] * node[mainattr].number ? node[mainattr][subattr][leafattr] * node[mainattr].number : 0;
+                  } else {
+                    summary[mainattr][subattr][leafattr] += node[mainattr][subattr][leafattr] * node[mainattr].number ? node[mainattr][subattr][leafattr] * node[mainattr].number : 0;
+                  }
+                }
+              } else {
+                if (!summary[mainattr][subattr]) {
+                  summary[mainattr][subattr] = node[mainattr][subattr] * node[mainattr].number ? node[mainattr][subattr] * node[mainattr].number : 0;
+                } else {
+                  summary[mainattr][subattr] += node[mainattr][subattr] * node[mainattr].number ? node[mainattr][subattr] * node[mainattr].number : 0;
+                }
+              }
+            }
+
+          } else {
+            if (!summary[mainattr]) {
+              summary[mainattr] = node[mainattr] ? node[mainattr] : 0;
+            } else {
+              summary[mainattr] += node[mainattr] ? node[mainattr] : 0;
+            }
+          }
+        }
+      }
+
+      for (var mainattr in summary) {
+        if (summary[mainattr] === null) continue;
+        if (typeof summary[mainattr] == 'object') {
+          for (var subattr in summary[mainattr]) {
+            if (subattr == 'number') continue;
+            if (summary[mainattr][subattr] === null) continue;
+            if (typeof summary[mainattr][subattr] == 'object') {
+              for (var leafattr in summary[mainattr][subattr]) {
+                summary[mainattr][subattr][leafattr] = 1.0 * summary[mainattr][subattr][leafattr] / mainattrCount[mainattr];
+              }
+            } else {
+              summary[mainattr][subattr] = 1.0 * summary[mainattr][subattr] / mainattrCount[mainattr];
+            }
+          }
+          summary[mainattr].number = mainattrCount[mainattr];
+        }
+      }
+
+      return summary;
     }
 
     function summarizequestion_finisher() {
@@ -1332,6 +1048,72 @@ var routes = {
     }
 
     return {};
+  },
+  "/api/retrieveSummary": function(parsedUrl) {
+    var fieldLabel = parsedUrl.query.field;
+    var objectLabel = parsedUrl.query.object;
+    //var item = parsedUrl.query.item;
+
+    var fieldLabels;
+    var objectLabels;
+    if (fieldLabel)
+      fieldLabels = fieldLabel.split(',');
+    if (objectLabel)
+      objectLabels = objectLabel.split(',');
+
+    //var items = item.split(',');
+
+    if (!summaryTabel) {
+      summaryTabel = storage.getItemSync('summaryTabel');
+    }
+
+    var table = {};
+
+    var verifiedColLabel = [];
+
+    for (var rowLabel in summaryTabel) {
+      if (fieldLabel) {
+        var matched = false;
+
+        for (var i = 0; i<fieldLabels.length; i++) {
+          if (rowLabel.indexOf(fieldLabels[i]) == 0) {
+            matched = true;
+          }
+        }
+
+        // the rowLabel is not one of the field labels, so go to next rowLabel
+        if (!matched) continue;
+      }
+
+      // if the program reaches here, then the rowLabel is one of the requested
+      table[rowLabel] = {};
+
+      if (verifiedColLabel.length == 0) {
+        for (var colLabel in summaryTabel[rowLabel]) {
+          if (objectLabel) {
+            for (var i = 0; i<objectLabels.length; i++) {
+              if (colLabel.indexOf(objectLabels[i]) == 0) {
+                verifiedColLabel.push(colLabel);
+              }
+            }
+          } else {
+            verifiedColLabel.push(colLabel);
+          }
+        }
+
+        if (verifiedColLabel.length == 0) {
+          sendResponse({});
+          console.log('no valid object!');
+          return;
+        }
+      }
+
+      for (var i = 0; i<verifiedColLabel.length; i++) {
+        table[rowLabel][verifiedColLabel[i]] = summaryTabel[rowLabel][verifiedColLabel[i]];
+      }
+    }
+
+    sendResponse(JSON.stringify(table));
   },
   "/api/getTable": function() {
     if (!summaryTabel) {

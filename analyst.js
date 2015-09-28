@@ -17,7 +17,7 @@ var connection = mysql.createConnection({
 
 var operational;
 var questions;
-var summaryTabel;
+var summaryTable;
 var property;
 
 // mapping phaseID to phaseTry in the DB
@@ -354,7 +354,7 @@ var routes = {
     }
   },
   "/api/summarizequestion": function(parsedUrl) {
-    summaryTabel = {};
+    summaryTable = {};
     property = {};
     connection.query('SELECT * FROM  `SUBJECT` ORDER BY  `SUBJECT`.`subjID` ASC',
       subject_query_handler);
@@ -375,7 +375,7 @@ var routes = {
         subjectNode.name = subject.subjName;
 
         property['subject_'+subjectNode.id] = subjectNode;
-        summaryTabel['subject_'+subjectNode.id] = {};
+        summaryTable['subject_'+subjectNode.id] = {};
       });
 
       connection.query('SELECT * FROM  `PHASE_TRY` ORDER BY  `PHASE_TRY`.`phaseId` ASC ', 
@@ -405,25 +405,25 @@ var routes = {
         activityNode.para3 = activity.para3;
 
         property['activity_'+activityNode.id] = activityNode;
-        summaryTabel['activity_'+activityNode.id] = {};
+        summaryTable['activity_'+activityNode.id] = {};
       });
 
       rows.forEach(function(activity){
         var id = palmviewActivityMapper[activity.phaseId];
         
-        summaryTabel['activity_'+ id + '_video_68ihQ9jQOM8'] = {};
-        summaryTabel['activity_'+ id + '_video_Jowey_prtVM'] = {};
-        summaryTabel['activity_'+ id + '_video_pjjSp46ffjQ'] = {};
-        summaryTabel['activity_'+ id + '_video_bwm5pv3UiYE'] = {};
-        summaryTabel['activity_'+ id + '_video_LlFw4UPv4L4'] = {};
-        summaryTabel['activity_'+ id + '_video_Jx9mtdx-7aQ'] = {};
-        summaryTabel['activity_'+ id + '_video_jcc0WBVtO90'] = {};
-        summaryTabel['activity_'+ id + '_video_0lf0YACerzY'] = {};
-        summaryTabel['activity_'+ id + '_video_bDXedeH-Bpo'] = {};
-        summaryTabel['activity_'+ id + '_video_zJUaLHvLP6s'] = {};
+        summaryTable['activity_'+ id + '_video_68ihQ9jQOM8'] = {};
+        summaryTable['activity_'+ id + '_video_Jowey_prtVM'] = {};
+        summaryTable['activity_'+ id + '_video_pjjSp46ffjQ'] = {};
+        summaryTable['activity_'+ id + '_video_bwm5pv3UiYE'] = {};
+        summaryTable['activity_'+ id + '_video_LlFw4UPv4L4'] = {};
+        summaryTable['activity_'+ id + '_video_Jx9mtdx-7aQ'] = {};
+        summaryTable['activity_'+ id + '_video_jcc0WBVtO90'] = {};
+        summaryTable['activity_'+ id + '_video_0lf0YACerzY'] = {};
+        summaryTable['activity_'+ id + '_video_bDXedeH-Bpo'] = {};
+        summaryTable['activity_'+ id + '_video_zJUaLHvLP6s'] = {};
 
         for (var questionID in questions) {
-          summaryTabel['activity_'+ id + '_question_' + questionID] = {};
+          summaryTable['activity_'+ id + '_question_' + questionID] = {};
         }
       });
 
@@ -432,24 +432,24 @@ var routes = {
 
     function object_initialization() {
 
-      for (var rowLabel in summaryTabel) {
-        // summaryTabel[rowLabel]['student_138'] = {};
+      for (var rowLabel in summaryTable) {
+        // summaryTable[rowLabel]['student_138'] = {};
         // continue;
 
-        summaryTabel[rowLabel]['school_2'] = {};
-        summaryTabel[rowLabel]['class_5'] = {};
-        summaryTabel[rowLabel]['class_6'] = {};
-        summaryTabel[rowLabel]['class_7'] = {};
-        summaryTabel[rowLabel]['class_8'] = {};
-        summaryTabel[rowLabel]['class_9'] = {};
-        summaryTabel[rowLabel]['class_10'] = {};
-        summaryTabel[rowLabel]['class_11'] = {};
-        summaryTabel[rowLabel]['class_12'] = {};
-        summaryTabel[rowLabel]['class_13'] = {};
-        summaryTabel[rowLabel]['class_14'] = {};
+        summaryTable[rowLabel]['school_2'] = {};
+        summaryTable[rowLabel]['class_5'] = {};
+        summaryTable[rowLabel]['class_6'] = {};
+        summaryTable[rowLabel]['class_7'] = {};
+        summaryTable[rowLabel]['class_8'] = {};
+        summaryTable[rowLabel]['class_9'] = {};
+        summaryTable[rowLabel]['class_10'] = {};
+        summaryTable[rowLabel]['class_11'] = {};
+        summaryTable[rowLabel]['class_12'] = {};
+        summaryTable[rowLabel]['class_13'] = {};
+        summaryTable[rowLabel]['class_14'] = {};
 
         for(var i = 0; i< operational.students.length; i++) {
-          summaryTabel[rowLabel]['student_' + operational.students[i]] = {};
+          summaryTable[rowLabel]['student_' + operational.students[i]] = {};
         }
       }
 
@@ -458,7 +458,7 @@ var routes = {
 
     function summarize_question_view() {
       for(var i = 0; i< operational.students.length; i++) {
-        //if (operational.students[i] != 138) continue; //--- used for debugging purpose
+        // if (operational.students[i] != 138) continue; //--- used for debugging purpose
         var studentNode = storage.getItemSync('student_' + operational.students[i]);
         if (!studentNode) throw "summarize: cannot find the student";
 
@@ -485,12 +485,12 @@ var routes = {
               for (var i_q = 0; activityNode.questions && i_q < activityNode.questions.length; i_q++) {
                 var questionNode = activityNode.questions[i_q];
 
-                if (summaryTabel['activity_'+activityNode.activityID+'_question_'+questionNode.id]) {
-                  if (!summaryTabel['activity_'+activityNode.activityID+'_question_'+questionNode.id]['student_'+studentNode.studentID][sessionNode.sessionID]) {
-                    summaryTabel['activity_'+activityNode.activityID+'_question_'+questionNode.id]['student_'+studentNode.studentID][sessionNode.sessionID] = {};  
-                    summaryTabel['activity_'+activityNode.activityID+'_question_'+questionNode.id]['student_'+studentNode.studentID][sessionNode.sessionID].instances = [];
+                if (summaryTable['activity_'+activityNode.activityID+'_question_'+questionNode.id]) {
+                  if (!summaryTable['activity_'+activityNode.activityID+'_question_'+questionNode.id]['student_'+studentNode.studentID][sessionNode.sessionID]) {
+                    summaryTable['activity_'+activityNode.activityID+'_question_'+questionNode.id]['student_'+studentNode.studentID][sessionNode.sessionID] = {};  
+                    summaryTable['activity_'+activityNode.activityID+'_question_'+questionNode.id]['student_'+studentNode.studentID][sessionNode.sessionID].instances = [];
                   }
-                  summaryTabel['activity_'+activityNode.activityID+'_question_'+questionNode.id]['student_'+studentNode.studentID][sessionNode.sessionID].instances.push(questionNode);
+                  summaryTable['activity_'+activityNode.activityID+'_question_'+questionNode.id]['student_'+studentNode.studentID][sessionNode.sessionID].instances.push(questionNode);
 
                 //   var bla = '';
                 //   for (var j = 0; j<questionNode.sequence.length; j++) {
@@ -508,10 +508,10 @@ var routes = {
               }
 
               //questions per session
-              for (var rowLabel in summaryTabel) {
+              for (var rowLabel in summaryTable) {
                 if (rowLabel.indexOf('activity_'+activityNode.activityID+'_question_') < 0) continue;
-                if (!summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID]) continue;
-                cell = summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].instances;
+                if (!summaryTable[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID]) continue;
+                cell = summaryTable[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].instances;
                 if (!cell) continue;
 
                 var questionSummaryNode = {};
@@ -628,14 +628,14 @@ var routes = {
                   }
                 }
 
-                summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].summary = questionSummaryNode;
+                summaryTable[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].summary = questionSummaryNode;
               }
 
               for (var videoID in activityNode.videos) {
-                if (!summaryTabel['activity_'+activityNode.activityID+'_video_'+videoID]['student_'+studentNode.studentID][sessionNode.sessionID]) {
-                  summaryTabel['activity_'+activityNode.activityID+'_video_'+videoID]['student_'+studentNode.studentID][sessionNode.sessionID] = {};
+                if (!summaryTable['activity_'+activityNode.activityID+'_video_'+videoID]['student_'+studentNode.studentID][sessionNode.sessionID]) {
+                  summaryTable['activity_'+activityNode.activityID+'_video_'+videoID]['student_'+studentNode.studentID][sessionNode.sessionID] = {};
                 }
-                summaryTabel['activity_'+activityNode.activityID+'_video_'+videoID]['student_'+studentNode.studentID][sessionNode.sessionID].instances = activityNode.videos[videoID];
+                summaryTable['activity_'+activityNode.activityID+'_video_'+videoID]['student_'+studentNode.studentID][sessionNode.sessionID].instances = activityNode.videos[videoID];
 
                 var videoSummaryNode = {};
                 videoSummaryNode.number = 0;
@@ -661,12 +661,12 @@ var routes = {
                 videoSummaryNode.pauseDuration = 1.0 * tempPauseDuration / videoSummaryNode.number;
                 videoSummaryNode.watchedPercentage = 1.0 * tempPercentage / videoSummaryNode.number;
 
-                summaryTabel['activity_'+activityNode.activityID+'_video_'+videoID]['student_'+studentNode.studentID][sessionNode.sessionID].summary = videoSummaryNode;
+                summaryTable['activity_'+activityNode.activityID+'_video_'+videoID]['student_'+studentNode.studentID][sessionNode.sessionID].summary = videoSummaryNode;
               }
 
-              if (!summaryTabel['activity_'+activityNode.activityID]['student_'+studentNode.studentID][sessionNode.sessionID]) {
-                summaryTabel['activity_'+activityNode.activityID]['student_'+studentNode.studentID][sessionNode.sessionID] = {};
-                summaryTabel['activity_'+activityNode.activityID]['student_'+studentNode.studentID][sessionNode.sessionID].instances = [];
+              if (!summaryTable['activity_'+activityNode.activityID]['student_'+studentNode.studentID][sessionNode.sessionID]) {
+                summaryTable['activity_'+activityNode.activityID]['student_'+studentNode.studentID][sessionNode.sessionID] = {};
+                summaryTable['activity_'+activityNode.activityID]['student_'+studentNode.studentID][sessionNode.sessionID].instances = [];
               }
               var activitySummaryNode = {};
 
@@ -718,9 +718,9 @@ var routes = {
               activitySummaryNode.video.pauseDuration = 0; 
               activitySummaryNode.video.watchedPercentage = 0;
               for (var videoID in activityNode.videos) {
-                if (!summaryTabel['activity_'+activityNode.activityID+'_video_'+videoID]['student_'+studentNode.studentID][sessionNode.sessionID])
+                if (!summaryTable['activity_'+activityNode.activityID+'_video_'+videoID]['student_'+studentNode.studentID][sessionNode.sessionID])
                   continue;
-                var videoNode = summaryTabel['activity_'+activityNode.activityID+'_video_'+videoID]['student_'+studentNode.studentID][sessionNode.sessionID].summary;
+                var videoNode = summaryTable['activity_'+activityNode.activityID+'_video_'+videoID]['student_'+studentNode.studentID][sessionNode.sessionID].summary;
                 activitySummaryNode.video.number += videoNode.number;
                 activitySummaryNode.video.activeDuration += videoNode.activeDuration * videoNode.number;
                 activitySummaryNode.video.pauseTimes += videoNode.pauseTimes * videoNode.number;
@@ -728,7 +728,7 @@ var routes = {
                 activitySummaryNode.video.watchedPercentage += videoNode.watchedPercentage * videoNode.number;
               }
               if (activitySummaryNode.video.number > 0) {
-                activitySummaryNode.video.activeDuration = 1.0 * activitySummaryNode.video.activeDuratio / activitySummaryNode.video.number;
+                activitySummaryNode.video.activeDuration = 1.0 * activitySummaryNode.video.activeDuration / activitySummaryNode.video.number;
                 activitySummaryNode.video.pauseTimes = 1.0 * activitySummaryNode.video.pauseTimes / activitySummaryNode.video.number;
                 activitySummaryNode.video.pauseDuration = 1.0 * activitySummaryNode.video.pauseDuration / activitySummaryNode.video.number;
                 activitySummaryNode.video.watchedPercentage = 1.0 * activitySummaryNode.video.watchedPercentage / activitySummaryNode.video.number;
@@ -738,32 +738,32 @@ var routes = {
               if (!activitySummaryNode.video.pauseDuration) activitySummaryNode.video.pauseDuration = 0;
               if (!activitySummaryNode.video.watchedPercentage) activitySummaryNode.video.watchedPercentage = 0;
 
-              summaryTabel['activity_'+activityNode.activityID]['student_'+studentNode.studentID][sessionNode.sessionID].instances.push(activitySummaryNode);
+              summaryTable['activity_'+activityNode.activityID]['student_'+studentNode.studentID][sessionNode.sessionID].instances.push(activitySummaryNode);
             }
             
             // summarize individual activity for each session
-            for (var rowLabel in summaryTabel) {
+            for (var rowLabel in summaryTable) {
               if (rowLabel.indexOf('activity_') !== 0 || 
                 rowLabel.indexOf('_question_') > 0 ||
                 rowLabel.indexOf('_video_') > 0)
                 continue;
-              if (!summaryTabel[rowLabel] || !summaryTabel[rowLabel]['student_'+studentNode.studentID] || !summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID])
+              if (!summaryTable[rowLabel] || !summaryTable[rowLabel]['student_'+studentNode.studentID] || !summaryTable[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID])
                 continue;
-              var count = summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].instances.length;
+              var count = summaryTable[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].instances.length;
               if (count === 0) {
                 continue;
               } else if (count == 1) {
-                summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].summary = summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].instances[0];
+                summaryTable[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].summary = summaryTable[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].instances[0];
               } else {
                 var nodeList = [];
                 for(var i_act = 0; i_act < count; i_act++) {
-                  if (summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].instances[i_act]) {
-                    nodeList.push(summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].instances[i_act]);
+                  if (summaryTable[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].instances[i_act]) {
+                    nodeList.push(summaryTable[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].instances[i_act]);
                   }
                 }
 
                 if (nodeList.length > 0) {
-                  summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].summary = aggregate(nodeList);  
+                  summaryTable[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].summary = aggregate(nodeList);  
                 }
                 
               }
@@ -771,28 +771,28 @@ var routes = {
 
             // summarize subject for each session (from the activities)
             var nodeList = [];
-            for (var rowLabel in summaryTabel) {
+            for (var rowLabel in summaryTable) {
               if (rowLabel.indexOf('activity_') !== 0 || 
                 rowLabel.indexOf('_question_') > 0 ||
                 rowLabel.indexOf('_video_') > 0)
                 continue;
 
-              if (!summaryTabel[rowLabel] || ! summaryTabel[rowLabel]['student_'+studentNode.studentID] || !summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID])
+              if (!summaryTable[rowLabel] || ! summaryTable[rowLabel]['student_'+studentNode.studentID] || !summaryTable[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID])
                 continue;
 
-              if (summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].summary) {
-                nodeList.push(summaryTabel[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].summary);
+              if (summaryTable[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].summary) {
+                nodeList.push(summaryTable[rowLabel]['student_'+studentNode.studentID][sessionNode.sessionID].summary);
               }
             }
 
             if (nodeList.length > 0) {
-              summaryTabel['subject_'+subjectID]['student_'+studentNode.studentID][sessionNode.sessionID] = aggregate(nodeList);
+              summaryTable['subject_'+subjectID]['student_'+studentNode.studentID][sessionNode.sessionID] = aggregate(nodeList);
             }
           }
 
           // summarize for session
-          for (var rowLabel in summaryTabel) {
-            var cell = summaryTabel[rowLabel]['student_'+studentNode.studentID];
+          for (var rowLabel in summaryTable) {
+            var cell = summaryTable[rowLabel]['student_'+studentNode.studentID];
             var nodeList = [];
 
             if (rowLabel.indexOf('subject_') == 0) {
@@ -812,10 +812,14 @@ var routes = {
 
             if (nodeList.length > 0) {
               if ( rowLabel.indexOf('_question_') > 0 || rowLabel.indexOf('_video_') > 0 ) {
-                summaryTabel[rowLabel]['student_'+studentNode.studentID].summary = aggregateVideoQuestion(nodeList);  
+                summaryTable[rowLabel]['student_'+studentNode.studentID].summary = aggregateVideoQuestion(nodeList);  
               } else {
-                summaryTabel[rowLabel]['student_'+studentNode.studentID].summary = aggregate(nodeList);
+                summaryTable[rowLabel]['student_'+studentNode.studentID].summary = aggregate(nodeList);
               }
+            }
+
+            if (rowLabel == 'subject_2' && summaryTable[rowLabel]['student_'+studentNode.studentID].summary) {
+              summaryTable[rowLabel]['student_'+studentNode.studentID].summary.progress = subjectNode.progress;
             }
           }
         }
@@ -835,13 +839,15 @@ var routes = {
       property['class_13'] = {};    property['class_13'].className = 'Pythagoras 2';    property['class_13'].schoolID = 2;
       property['class_14'] = {};    property['class_14'].className = 'Archimedes 2';    property['class_14'].schoolID = 2;
 
-      for(var rowLabel in summaryTabel) {
+      var exclusionList = ['progress'];
+
+      for(var rowLabel in summaryTable) {
         for (var classID = 5; classID < 14; classID++) {
           var nodeList = [];
 
-          for (var colLabel in summaryTabel[rowLabel]) {
+          for (var colLabel in summaryTable[rowLabel]) {
             if (colLabel.indexOf('student_') < 0 || property[colLabel].classID != classID) continue;
-            var cellSummary = summaryTabel[rowLabel][colLabel].summary;
+            var cellSummary = summaryTable[rowLabel][colLabel].summary;
             //if (!cellSummary) console.log('no summary?! '+ rowLabel + '   ' + colLabel);
 
             nodeList.push(cellSummary);
@@ -849,36 +855,36 @@ var routes = {
 
           if (nodeList.length > 0) {
             if (rowLabel.indexOf('_question_') > 0 || rowLabel.indexOf('_video_') > 0) {
-              summaryTabel[rowLabel]['class_'+classID] = aggregateVideoQuestion(nodeList);
+              summaryTable[rowLabel]['class_'+classID] = aggregateVideoQuestion(nodeList);
             } else {
-              summaryTabel[rowLabel]['class_'+classID] = aggregate(nodeList);
+              summaryTable[rowLabel]['class_'+classID] = aggregate(nodeList, exclusionList);
             }
           }
         }
       }
 
       var schoolID = 2;
-      for (var rowLabel in summaryTabel) {
+      for (var rowLabel in summaryTable) {
         var nodeList = [];
         
-        for (var colLabel in summaryTabel[rowLabel]) {
+        for (var colLabel in summaryTable[rowLabel]) {
           if (colLabel.indexOf('class_') < 0 || property[colLabel].schoolID != schoolID) continue;
-          var cellSummary = summaryTabel[rowLabel][colLabel];
+          var cellSummary = summaryTable[rowLabel][colLabel];
           //if (!cellSummary) console.log('no summary?! '+ rowLabel + '   ' + colLabel);
           nodeList.push(cellSummary);
         }
 
         if (rowLabel.indexOf('_question_') > 0 || rowLabel.indexOf('_video_') > 0) {
-          summaryTabel[rowLabel]['school_'+schoolID] = aggregateVideoQuestion(nodeList);
+          summaryTable[rowLabel]['school_'+schoolID] = aggregateVideoQuestion(nodeList);
         } else {
-          summaryTabel[rowLabel]['school_'+schoolID] = aggregate(nodeList);
+          summaryTable[rowLabel]['school_'+schoolID] = aggregate(nodeList, exclusionList);
         }
       }
 
       summarizequestion_finisher();
     }
 
-    function aggregateVideoQuestion(nodeList) {
+    function aggregateVideoQuestion(nodeList, exclusionList) {
       var summary = {};
       summary.number = 0;
 
@@ -886,6 +892,7 @@ var routes = {
         var node = nodeList[i];
 
         for (var mainattr in node) {
+          if (exclusionList && exclusionList.indexOf(mainattr)) continue;
           if (mainattr == 'number') {
             summary.number += node[mainattr];
           } else if (node[mainattr] === null) {
@@ -926,13 +933,14 @@ var routes = {
       return summary;
     }
 
-    function aggregate(nodeList) {
+    function aggregate(nodeList, exclusionList) {
       var summary = {};
       var mainattrCount = {};
       for(var i = 0; i < nodeList.length; i++) {
         var node = nodeList[i];
 
         for(var mainattr in node) {
+          if (exclusionList && exclusionList.indexOf(mainattr)) continue;
           if (typeof node[mainattr] == 'object') {
             if (!mainattrCount[mainattr]) {
               mainattrCount[mainattr] = node[mainattr].number;
@@ -998,7 +1006,7 @@ var routes = {
     }
 
     function summarizequestion_finisher() {
-      storage.setItemSync('summaryTabel', summaryTabel);
+      storage.setItemSync('summaryTable', summaryTable);
       storage.setItemSync('propertyList', property);
       sendResponse('done');
     }
@@ -1021,7 +1029,7 @@ var routes = {
     if(studentID) {
       studentNode = storage.getItemSync('student_'+studentID);
       if (studentNode) {
-        sendResponse(JSON.stringify(studentNode));
+        sendResponse(studentNode);
       } else {
         sendResponse("no student with id: "+studentID);
       }
@@ -1034,7 +1042,7 @@ var routes = {
         }
         students.push(studentNode);
       }
-      sendResponse(JSON.stringify(students));
+      sendResponse(students);
     } else {
       students = [];
       for(i = 0; i< operational.students.length; i++) {
@@ -1044,7 +1052,7 @@ var routes = {
         }
         students.push(studentNode);
       }
-      sendResponse(JSON.stringify(students));
+      sendResponse(students);
     }
 
     return {};
@@ -1063,15 +1071,15 @@ var routes = {
 
     //var items = item.split(',');
 
-    if (!summaryTabel) {
-      summaryTabel = storage.getItemSync('summaryTabel');
+    if (!summaryTable) {
+      summaryTable = storage.getItemSync('summaryTable');
     }
 
     var table = {};
 
     var verifiedColLabel = [];
 
-    for (var rowLabel in summaryTabel) {
+    for (var rowLabel in summaryTable) {
       if (fieldLabel) {
         var matched = false;
 
@@ -1089,7 +1097,7 @@ var routes = {
       table[rowLabel] = {};
 
       if (verifiedColLabel.length == 0) {
-        for (var colLabel in summaryTabel[rowLabel]) {
+        for (var colLabel in summaryTable[rowLabel]) {
           if (objectLabel) {
             for (var i = 0; i<objectLabels.length; i++) {
               if (colLabel.indexOf(objectLabels[i]) == 0) {
@@ -1109,17 +1117,17 @@ var routes = {
       }
 
       for (var i = 0; i<verifiedColLabel.length; i++) {
-        table[rowLabel][verifiedColLabel[i]] = summaryTabel[rowLabel][verifiedColLabel[i]];
+        table[rowLabel][verifiedColLabel[i]] = summaryTable[rowLabel][verifiedColLabel[i]];
       }
     }
 
-    sendResponse(JSON.stringify(table));
+    sendResponse(table);
   },
   "/api/getTable": function() {
-    if (!summaryTabel) {
-      summaryTabel = storage.getItemSync('summaryTabel');
+    if (!summaryTable) {
+      summaryTable = storage.getItemSync('summaryTable');
     }
-    sendResponse(JSON.stringify(summaryTabel));
+    sendResponse(summaryTable);
   },
   "/api/clear": function() {
     storage.clearSync();
@@ -1612,7 +1620,6 @@ function processStudentLog(studentNode) {
               }
               throw 'what? still have???' + _event.actionType + ' ' + _event.action + ' ' + _event.target1;
             }
-
             sequenceNode = null;
             tailNode = null;
             return;
@@ -1635,6 +1642,7 @@ function processStudentLog(studentNode) {
             }
             sequenceNode = currentQuestionNode.sequence[currentQuestionNode.sequence.length-1];
             sequenceNode.answers.push(_event.correct);
+            currentQuestionNode.sequence.push(sequenceNode);
             sequenceNode = null;
             tailNode = null;
             return;
@@ -1655,6 +1663,7 @@ function processStudentLog(studentNode) {
               equation = equation.replace(' ', currentQuestionSelectedOperator);
               sequenceNode.equation = equation;
             }
+            currentQuestionNode.sequence.push(sequenceNode);
             tailNode = null;
             sequenceNode = null;
             return;
@@ -1684,7 +1693,7 @@ function processStudentLog(studentNode) {
             return;
           }
 
-          if (startWith(_event.action, 'select_well-done')) {
+          if (startWith(_event.action, 'select_well-done_')) {
             tailNode = currentQuestionNode.sequence[currentQuestionNode.sequence.length-1];
             if (tailNode.startTime && typeof tailNode.endTime == 'object' && !tailNode.endTime) {
               tailNode.endTime = new Date(_event.time);
@@ -1699,6 +1708,7 @@ function processStudentLog(studentNode) {
             } else if (_event.target1 == 'practice more') {
               sequenceNode.label = 'CM';
             }
+            currentQuestionNode.sequence.push(sequenceNode);
             sequenceNode = null;
             return;
           }
@@ -2022,18 +2032,20 @@ function processStudentLog(studentNode) {
             }
           }
 
-          if (questionNode.workout_dragDrops && questionNode.workout_dragDrops.fields) {
-            for (var i_ddf = 0; i_ddf<questionNode.workout_dragDrops.fields.length; i_ddf++) {
-              currentActivityNode.questionSummary.workout_dragDrops.incomplete_attempts += questionNode.workout_dragDrops.fields[i_ddf].incomplete_attempts;
-              currentActivityNode.questionSummary.workout_dragDrops.complete_attempts += questionNode.workout_dragDrops.fields[i_ddf].attempts.times;
-              currentActivityNode.questionSummary.workout_dragDrops.correct_attampts += questionNode.workout_dragDrops.fields[i_ddf].attempts.correctTimes;
+          if (questionNode.workout_dragDrops) {//} && questionNode.workout_dragDrops.fields) {
+            for (var field in questionNode.workout_dragDrops) {
+            //for (var i_ddf = 0; i_ddf<questionNode.workout_dragDrops.fields.length; i_ddf++) {
+              currentActivityNode.questionSummary.workout_dragDrops.incomplete_attempts += questionNode.workout_dragDrops[field].incomplete_attempts;
+              currentActivityNode.questionSummary.workout_dragDrops.complete_attempts += questionNode.workout_dragDrops[field].attempts.times;
+              currentActivityNode.questionSummary.workout_dragDrops.correct_attampts += questionNode.workout_dragDrops[field].attempts.correctTimes;
             }
           }
 
           if (questionNode.workout_equation) {
-            for (var i_eq = 0; i_eq<questionNode.workout_equation.length; i_eq++) {
-              currentActivityNode.questionSummary.workout_equation.times += questionNode.workout_equation[i_eq].times;
-              currentActivityNode.questionSummary.workout_equation.correct += questionNode.workout_equation[i_eq].correctTimes;
+            //for (var i_eq = 0; i_eq<questionNode.workout_equation.length; i_eq++) {
+            for (var field in questionNode.workout_equation) {
+              currentActivityNode.questionSummary.workout_equation.times += questionNode.workout_equation[field].times;
+              currentActivityNode.questionSummary.workout_equation.correct += questionNode.workout_equation[field].correctTimes;
             }
           }
 
@@ -2342,24 +2354,6 @@ function unionIntervals(intervals, key) {
   return mergedIntervals;
 }
 
-// function getVideoDuration(id) {
-//   https.get('https://www.googleapis.com/youtube/v3/videos?id='+id+'&key=AIzaSyCghq5LFS4EhzNMJejenup1ZQO6xiNRMtY&part=contentDetails', function(res) {
-//     res.on('data', function(d) {
-//       var reptms = /^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/;
-//       var hours = 0, minutes = 0, seconds = 0, totalseconds;
-//       if (reptms.test( JSON.parse(d.toString()).items[0].contentDetails.duration )) {
-//         var matches = reptms.exec(input);
-//         if (matches[1]) hours = Number(matches[1]);
-//         if (matches[2]) minutes = Number(matches[2]);
-//         if (matches[3]) seconds = Number(matches[3]);
-//         totalseconds = hours * 3600  + minutes * 60 + seconds;
-//       }
-//     });
-//   }).on('error', function(e) {
-//     console.error(e);
-//   });
-// }
-
 function sendResponse(res) {
   if (_response === null) {
     console.error('response is null');
@@ -2396,7 +2390,7 @@ var server = http.createServer(function(request, response) {
     _response.end();
   }
 });
-// server.listen(1337,'127.0.0.1');
+server.listen(1337,'127.0.0.1');
 // production
-server.listen(8000,'127.0.0.1');
+// server.listen(8000,'127.0.0.1');
 console.log('running');
